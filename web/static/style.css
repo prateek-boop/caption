@@ -1,0 +1,78 @@
+/* Custom styles for Captioner Studio */
+body {
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.6);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(51, 65, 85, 0.8);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 1);
+}
+
+/* Active Segment Highlight */
+.segment-card {
+  transition: all 0.2s ease-in-out;
+}
+
+.segment-card.active-segment {
+  border-color: rgba(139, 92, 246, 0.7);
+  background-color: rgba(139, 92, 246, 0.08);
+  box-shadow: 0 4px 20px -2px rgba(124, 58, 237, 0.15);
+}
+
+/* Word Karaoke Highlight */
+.karaoke-word {
+  display: inline-block;
+  padding: 1px 3px;
+  margin: 1px 1px;
+  border-radius: 4px;
+  transition: all 0.15s ease-out;
+  cursor: pointer;
+}
+
+.karaoke-word:hover {
+  background-color: rgba(139, 92, 246, 0.25);
+  color: #fff;
+}
+
+.karaoke-word.active-word {
+  background-color: #8b5cf6 !important;
+  color: #ffffff !important;
+  font-weight: 600;
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.6);
+  transform: scale(1.06);
+}
+
+/* Speaker Colors */
+.speaker-badge-0 { background-color: rgba(99, 102, 241, 0.15); color: #818cf8; border-color: rgba(99, 102, 241, 0.3); }
+.speaker-badge-1 { background-color: rgba(236, 72, 153, 0.15); color: #f472b6; border-color: rgba(236, 72, 153, 0.3); }
+.speaker-badge-2 { background-color: rgba(16, 185, 129, 0.15); color: #34d399; border-color: rgba(16, 185, 129, 0.3); }
+.speaker-badge-3 { background-color: rgba(245, 158, 11, 0.15); color: #fbbf24; border-color: rgba(245, 158, 11, 0.3); }
+.speaker-badge-4 { background-color: rgba(14, 165, 233, 0.15); color: #38bdf8; border-color: rgba(14, 165, 233, 0.3); }
+.speaker-badge-default { background-color: rgba(148, 163, 184, 0.15); color: #cbd5e1; border-color: rgba(148, 163, 184, 0.3); }
+
+/* Range Scrubber */
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: 14px;
+  width: 14px;
+  border-radius: 50%;
+  background: #a78bfa;
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(139, 92, 246, 0.8);
+  transition: transform 0.1s ease;
+}
+
+input[type=range]::-webkit-slider-thumb:hover {
+  transform: scale(1.25);
+}
