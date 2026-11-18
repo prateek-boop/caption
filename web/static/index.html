@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Captioner Studio | Accelerated Speech Recognition & Diarization</title>
+  <title>Captioner Studio Pro | Universal ASR & 3D Media Clipper</title>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -16,6 +16,8 @@
               50: '#f5f3ff',
               100: '#ede9fe',
               200: '#ddd6fe',
+              300: '#c4b5fd',
+              400: '#a78bfa',
               500: '#8b5cf6',
               600: '#7c3aed',
               700: '#6d28d9',
@@ -30,61 +32,103 @@
   <!-- Google Fonts & FontAwesome Icons -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
   <link rel="stylesheet" href="/style.css" />
+  <!-- Three.js 3D WebGL Engine -->
+  <script src="/three.min.js"></script>
 </head>
-<body class="bg-slate-950 text-slate-100 font-sans antialiased min-h-screen flex flex-col selection:bg-brand-600 selection:text-white">
+<body class="bg-slate-950 text-slate-100 font-sans antialiased min-h-screen selection:bg-brand-600 selection:text-white relative overflow-hidden">
+
+  <!-- Ambient Light Mesh & 3D WebGL Canvas Layer -->
+  <div class="bg-mesh-glow"></div>
+  <canvas id="bg-canvas-3d"></canvas>
 
   <!-- Toast Notification Container -->
-  <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 max-w-sm pointer-events-none"></div>
+  <div id="toast-container" class="fixed top-5 right-5 z-[100] flex flex-col gap-2 max-w-sm pointer-events-none"></div>
 
   <!-- Auth Modal -->
-  <div id="auth-modal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 transition-all">
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md shadow-2xl p-6 relative">
-      <div class="flex items-center gap-3 mb-6">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-500 flex items-center justify-center text-white text-xl shadow-lg shadow-brand-500/20">
+  <div id="auth-modal" class="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-xl flex items-center justify-center p-4 transition-all">
+    <div class="glass-surface w-full max-w-md shadow-2xl p-7 relative border-white/10">
+      <div class="flex items-center gap-3.5 mb-6">
+        <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-brand-600 via-indigo-600 to-rose-500 flex items-center justify-center text-white text-xl shadow-lg shadow-brand-500/25">
           <i class="fa-solid fa-wave-square"></i>
         </div>
         <div>
-          <h2 class="text-xl font-bold tracking-tight text-white">Captioner Studio</h2>
-          <p class="text-xs text-slate-400">High-Performance ASR & Diarization</p>
+          <h2 class="text-xl font-extrabold tracking-tight text-white flex items-center gap-2">
+            <span>Captioner Pro</span>
+            <span class="text-[10px] px-2 py-0.5 rounded-full bg-brand-500/20 text-brand-300 border border-brand-500/30 font-mono">v4.0</span>
+          </h2>
+          <p class="text-xs text-slate-400">Universal ASR, Diarization & 3D Media Clipper</p>
         </div>
       </div>
 
       <!-- Auth Tabs -->
       <div class="flex border-b border-slate-800 mb-6">
-        <button id="tab-login" onclick="switchAuthTab('login')" class="flex-1 pb-3 text-sm font-semibold border-b-2 border-brand-500 text-brand-400 transition-colors">
+        <button type="button" id="tab-login" onclick="switchAuthTab('login')" class="flex-1 pb-3 text-sm font-semibold border-b-2 border-brand-500 text-brand-400 transition-colors">
           Sign In
         </button>
-        <button id="tab-register" onclick="switchAuthTab('register')" class="flex-1 pb-3 text-sm font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition-colors">
+        <button type="button" id="tab-register" onclick="switchAuthTab('register')" class="flex-1 pb-3 text-sm font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition-colors">
           Create Account
         </button>
+        <button type="button" id="tab-reset" onclick="switchAuthTab('reset')" class="hidden flex-1 pb-3 text-sm font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition-colors">
+          Reset Password
+        </button>
+      </div>
+
+      <!-- Inline Auth Error Banner -->
+      <div id="auth-error-banner" class="hidden mb-4 p-3.5 rounded-xl bg-rose-950/90 border border-rose-600/60 text-rose-200 text-xs flex flex-col gap-2">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-circle-exclamation text-rose-400 text-sm flex-shrink-0"></i>
+          <span id="auth-error-text" class="font-medium"></span>
+        </div>
+        <div id="auth-error-actions" class="hidden flex items-center gap-2 pt-1 border-t border-rose-800/40"></div>
       </div>
 
       <!-- Login Form -->
       <form id="form-login" onsubmit="handleLogin(event)" class="space-y-4">
         <div>
-          <label class="block text-xs font-semibold text-slate-300 mb-1.5">Username</label>
+          <label class="block text-xs font-semibold text-slate-300 mb-1.5">Username or Email Address</label>
           <div class="relative">
             <i class="fa-solid fa-user absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-sm"></i>
-            <input type="text" id="login-username" required placeholder="your_username"
-                   class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-all" />
+            <input type="text" id="login-username" required placeholder="username or user@example.com"
+                   class="w-full bg-slate-950/80 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-all" />
           </div>
         </div>
         <div>
-          <label class="block text-xs font-semibold text-slate-300 mb-1.5">Password</label>
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="block text-xs font-semibold text-slate-300">Password</label>
+            <button type="button" onclick="switchAuthTab('reset')" class="text-xs text-brand-400 hover:text-brand-300 font-medium">Forgot password?</button>
+          </div>
           <div class="relative">
             <i class="fa-solid fa-lock absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-sm"></i>
             <input type="password" id="login-password" required placeholder="••••••••"
-                   class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-all" />
+                   class="w-full bg-slate-950/80 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-all" />
           </div>
         </div>
         <button type="submit" id="btn-login-submit"
-                class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-medium text-sm shadow-lg shadow-brand-500/25 transition-all flex items-center justify-center gap-2">
+                class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-brand-600 via-indigo-600 to-rose-600 hover:from-brand-500 hover:to-rose-500 text-white font-semibold text-sm shadow-lg shadow-brand-500/25 transition-all flex items-center justify-center gap-2">
           <span>Sign In</span>
           <i class="fa-solid fa-arrow-right text-xs"></i>
         </button>
+
+        <div class="relative flex py-1 items-center">
+          <div class="flex-grow border-t border-slate-800"></div>
+          <span class="flex-shrink mx-3 text-[11px] uppercase tracking-wider text-slate-500 font-medium">Or</span>
+          <div class="flex-grow border-t border-slate-800"></div>
+        </div>
+
+        <button type="button" onclick="handleGuestLogin()" id="btn-guest-login"
+                class="w-full py-2.5 px-4 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-200 hover:text-white font-semibold text-xs border border-slate-700/60 transition-all flex items-center justify-center gap-2">
+          <i class="fa-solid fa-bolt text-amber-400"></i>
+          <span>Continue as Guest (Instant Access)</span>
+        </button>
+
+        <div class="text-center pt-2">
+          <button type="button" onclick="switchAuthTab('register')" class="text-xs text-brand-400 hover:text-brand-300 font-medium transition-colors">
+            Don't have an account? <span class="underline font-semibold">Create one</span>
+          </button>
+        </div>
       </form>
 
       <!-- Register Form -->
@@ -93,8 +137,8 @@
           <label class="block text-xs font-semibold text-slate-300 mb-1.5">Username</label>
           <div class="relative">
             <i class="fa-solid fa-user absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-sm"></i>
-            <input type="text" id="reg-username" required placeholder="lucifer"
-                   class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-all" />
+            <input type="text" id="reg-username" required placeholder="your_username"
+                   class="w-full bg-slate-950/80 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-all" />
           </div>
         </div>
         <div>
@@ -102,7 +146,7 @@
           <div class="relative">
             <i class="fa-solid fa-envelope absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-sm"></i>
             <input type="email" id="reg-email" required placeholder="user@example.com"
-                   class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-all" />
+                   class="w-full bg-slate-950/80 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-all" />
           </div>
         </div>
         <div>
@@ -110,576 +154,1442 @@
           <div class="relative">
             <i class="fa-solid fa-lock absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-sm"></i>
             <input type="password" id="reg-password" required placeholder="Minimum 4 characters"
-                   class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-all" />
+                   class="w-full bg-slate-950/80 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-all" />
           </div>
         </div>
         <button type="submit" id="btn-reg-submit"
-                class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-medium text-sm shadow-lg shadow-brand-500/25 transition-all flex items-center justify-center gap-2">
+                class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-brand-600 via-indigo-600 to-rose-600 hover:from-brand-500 hover:to-rose-500 text-white font-semibold text-sm shadow-lg shadow-brand-500/25 transition-all flex items-center justify-center gap-2">
           <span>Create Account</span>
           <i class="fa-solid fa-user-plus text-xs"></i>
         </button>
+
+        <div class="relative flex py-1 items-center">
+          <div class="flex-grow border-t border-slate-800"></div>
+          <span class="flex-shrink mx-3 text-[11px] uppercase tracking-wider text-slate-500 font-medium">Or</span>
+          <div class="flex-grow border-t border-slate-800"></div>
+        </div>
+
+        <button type="button" onclick="handleGuestLogin()"
+                class="w-full py-2.5 px-4 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-200 hover:text-white font-semibold text-xs border border-slate-700/60 transition-all flex items-center justify-center gap-2">
+          <i class="fa-solid fa-bolt text-amber-400"></i>
+          <span>Continue as Guest (Instant Access)</span>
+        </button>
+
+        <div class="text-center pt-2">
+          <button type="button" onclick="switchAuthTab('login')" class="text-xs text-brand-400 hover:text-brand-300 font-medium transition-colors">
+            Already have an account? <span class="underline font-semibold">Sign in</span>
+          </button>
+        </div>
+      </form>
+
+      <!-- Reset Password Form -->
+      <form id="form-reset" onsubmit="handleResetPassword(event)" class="space-y-4 hidden">
+        <p class="text-xs text-slate-400">Enter your registered email address and set a new password to restore access immediately.</p>
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1.5">Account Email Address</label>
+          <div class="relative">
+            <i class="fa-solid fa-envelope absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-sm"></i>
+            <input type="email" id="reset-email" required placeholder="user@example.com"
+                   class="w-full bg-slate-950/80 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-all" />
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1.5">New Password</label>
+          <div class="relative">
+            <i class="fa-solid fa-key absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-sm"></i>
+            <input type="password" id="reset-password" required placeholder="Minimum 4 characters"
+                   class="w-full bg-slate-950/80 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-all" />
+          </div>
+        </div>
+        <button type="submit" id="btn-reset-submit"
+                class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-600 via-rose-600 to-brand-600 hover:from-amber-500 hover:to-brand-500 text-white font-semibold text-sm shadow-lg shadow-brand-500/25 transition-all flex items-center justify-center gap-2">
+          <span>Reset Password & Sign In</span>
+          <i class="fa-solid fa-check text-xs"></i>
+        </button>
+
+        <div class="text-center pt-2">
+          <button type="button" onclick="switchAuthTab('login')" class="text-xs text-slate-400 hover:text-white font-medium transition-colors">
+            &larr; Back to <span class="underline text-brand-400 font-semibold">Sign In</span>
+          </button>
+        </div>
       </form>
     </div>
   </div>
 
-  <!-- Top Navigation Header -->
-  <header class="border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-md sticky top-0 z-40 px-6 py-3.5 flex items-center justify-between">
-    <div class="flex items-center gap-6">
-      <div class="flex items-center gap-3 cursor-pointer" onclick="navigate('dashboard')">
-        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-brand-500/20">
-          <i class="fa-solid fa-wave-square"></i>
+  <!-- User Profile & Account Settings Modal -->
+  <div id="profile-modal" class="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-xl flex items-center justify-center p-4 transition-all hidden">
+    <div class="glass-surface w-full max-w-xl shadow-2xl p-6 sm:p-7 relative border-white/10 max-h-[90vh] overflow-y-auto">
+      <!-- Close Button -->
+      <button onclick="closeProfileModal()" class="absolute top-5 right-5 w-8 h-8 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-colors text-xs" title="Close (Esc)">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <!-- Profile Header -->
+      <div class="flex items-center gap-4 mb-6 pb-5 border-b border-slate-800/80">
+        <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-brand-600 via-indigo-600 to-rose-500 flex items-center justify-center text-white text-xl font-extrabold shadow-lg shadow-brand-500/30 flex-shrink-0">
+          <span id="profile-avatar-initials">U</span>
         </div>
-        <div class="flex items-baseline gap-2">
-          <span class="font-extrabold text-base tracking-tight text-white">Caption<span class="text-brand-400">er</span></span>
-          <span class="text-xs px-2 py-0.5 rounded-full bg-brand-500/10 text-brand-400 border border-brand-500/20 font-mono font-medium">Studio v3.8</span>
-        </div>
-      </div>
-
-      <!-- Navigation Links -->
-      <nav class="hidden md:flex items-center gap-1 text-sm font-medium">
-        <button onclick="navigate('dashboard')" id="nav-dashboard" class="px-3.5 py-1.5 rounded-lg text-white bg-slate-800 transition-all flex items-center gap-2">
-          <i class="fa-solid fa-table-columns text-xs text-brand-400"></i>
-          <span>Dashboard</span>
-        </button>
-        <button onclick="navigate('new-transcription')" id="nav-new-transcription" class="px-3.5 py-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all flex items-center gap-2">
-          <i class="fa-solid fa-plus-circle text-xs"></i>
-          <span>New Job</span>
-        </button>
-        <button onclick="navigate('settings')" id="nav-settings" class="px-3.5 py-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all flex items-center gap-2">
-          <i class="fa-solid fa-sliders text-xs"></i>
-          <span>Settings</span>
-        </button>
-      </nav>
-    </div>
-
-    <!-- Right: System Info Badge & User Profile -->
-    <div class="flex items-center gap-4">
-      <div id="system-badge" class="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800/80 border border-slate-700/60 text-xs">
-        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-        <span id="gpu-info-text" class="text-slate-300 font-mono">Checking system...</span>
-      </div>
-
-      <div id="user-profile-menu" class="flex items-center gap-3">
-        <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-800/70 border border-slate-700/50">
-          <div class="w-6 h-6 rounded-full bg-gradient-to-tr from-brand-600 to-indigo-500 flex items-center justify-center text-[10px] text-white font-bold">
-            <span id="user-initials">U</span>
+        <div class="overflow-hidden">
+          <div class="flex items-center gap-2 flex-wrap">
+            <h2 id="profile-modal-username" class="text-xl font-bold text-white tracking-tight">Username</h2>
+            <span id="profile-modal-badge" class="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-brand-500/20 text-brand-300 border border-brand-500/30">Pro Developer</span>
           </div>
-          <span id="user-display-name" class="text-xs font-semibold text-slate-200">User</span>
+          <p id="profile-modal-email" class="text-xs text-slate-400 font-mono truncate">user@example.com</p>
+          <div class="flex items-center gap-2 text-[10px] text-slate-500 mt-1 font-mono">
+            <span>User ID: <span id="profile-modal-id" class="text-slate-400">1</span></span>
+            <span>•</span>
+            <span class="text-emerald-400 flex items-center gap-1"><i class="fa-solid fa-circle-check text-[9px]"></i> Active Session</span>
+          </div>
         </div>
-        <button onclick="logout()" title="Logout" class="w-8 h-8 rounded-xl bg-slate-800/70 border border-slate-700/50 hover:bg-rose-500/20 hover:border-rose-500/40 hover:text-rose-400 text-slate-400 flex items-center justify-center transition-all text-xs">
+      </div>
+
+      <!-- Navigation Tabs inside Profile Modal -->
+      <div class="flex border-b border-slate-800/80 mb-5 gap-1">
+        <button type="button" onclick="switchProfileTab('api')" id="tab-profile-api"
+                class="pb-2.5 px-3 text-xs font-semibold border-b-2 border-brand-500 text-brand-400 transition-colors flex items-center gap-1.5">
+          <i class="fa-solid fa-key"></i>
+          <span>API Access & Token</span>
+        </button>
+        <button type="button" onclick="switchProfileTab('security')" id="tab-profile-security"
+                class="pb-2.5 px-3 text-xs font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition-colors flex items-center gap-1.5">
+          <i class="fa-solid fa-shield-halved"></i>
+          <span>Security & Password</span>
+        </button>
+        <button type="button" onclick="switchProfileTab('prefs')" id="tab-profile-prefs"
+                class="pb-2.5 px-3 text-xs font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition-colors flex items-center gap-1.5">
+          <i class="fa-solid fa-sliders"></i>
+          <span>Preferences</span>
+        </button>
+      </div>
+
+      <!-- Tab Content: API Access -->
+      <div id="profile-pane-api" class="space-y-4">
+        <div class="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/80 space-y-2">
+          <div class="flex items-center justify-between">
+            <label class="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+              <i class="fa-solid fa-lock text-brand-400"></i>
+              <span>JWT Bearer Authentication Token</span>
+            </label>
+            <button type="button" onclick="toggleTokenMask()" id="btn-toggle-token-mask" class="text-[11px] text-slate-400 hover:text-white transition-colors">
+              <i class="fa-solid fa-eye mr-1"></i> Show
+            </button>
+          </div>
+          <div class="flex items-center gap-2">
+            <input type="password" id="profile-token-display" readonly
+                   class="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white font-mono select-all focus:outline-none" />
+            <button type="button" onclick="copyUserToken()" id="btn-copy-token"
+                    class="py-2 px-3 rounded-lg bg-brand-600 hover:bg-brand-500 text-white font-semibold text-xs transition-all flex items-center gap-1.5 flex-shrink-0 shadow-md shadow-brand-500/20">
+              <i class="fa-regular fa-copy"></i>
+              <span>Copy</span>
+            </button>
+          </div>
+          <p class="text-[11px] text-slate-500">Use this token to authenticate external CLI requests, headless Python scripts, or direct download queries via <code class="text-brand-300 font-mono">?token=&lt;token&gt;</code>.</p>
+        </div>
+
+        <div class="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/80 space-y-2">
+          <span class="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+            <i class="fa-solid fa-terminal text-cyan-400"></i>
+            <span>Quick cURL Example</span>
+          </span>
+          <pre id="profile-curl-example" class="p-2.5 rounded-lg bg-slate-900 border border-slate-800/80 text-[11px] font-mono text-cyan-300 overflow-x-auto select-all">curl -H "Authorization: Bearer &lt;YOUR_TOKEN&gt;" http://localhost:8080/api/jobs</pre>
+        </div>
+      </div>
+
+      <!-- Tab Content: Security & Change Password -->
+      <form id="profile-pane-security" onsubmit="handleProfileChangePassword(event)" class="space-y-4 hidden">
+        <div id="profile-pwd-alert" class="hidden p-3 rounded-xl text-xs flex items-center gap-2"></div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1.5">Current Password</label>
+          <input type="password" id="profile-cur-pwd" required placeholder="••••••••"
+                 class="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-500" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1.5">New Password</label>
+          <input type="password" id="profile-new-pwd" required placeholder="Minimum 4 characters"
+                 class="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-500" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1.5">Confirm New Password</label>
+          <input type="password" id="profile-confirm-pwd" required placeholder="Re-enter new password"
+                 class="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-500" />
+        </div>
+
+        <button type="submit" id="btn-profile-change-pwd"
+                class="py-2.5 px-4 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-semibold text-xs shadow-md shadow-brand-500/20 transition-all flex items-center gap-2">
+          <i class="fa-solid fa-key"></i>
+          <span>Update Password</span>
+        </button>
+      </form>
+
+      <!-- Tab Content: Preferences -->
+      <form id="profile-pane-prefs" onsubmit="handleProfileSavePreferences(event)" class="space-y-4 hidden">
+        <div id="profile-prefs-alert" class="hidden p-3 rounded-xl text-xs flex items-center gap-2"></div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1.5">Hugging Face Access Token (Pyannote Diarization)</label>
+          <input type="password" id="profile-hf-token" placeholder="hf_••••••••"
+                 class="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white font-mono placeholder-slate-500 focus:outline-none focus:border-brand-500" />
+          <p class="text-[11px] text-slate-500 mt-1">Used for gated speaker diarization models from huggingface.co.</p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1.5">Default Whisper Model</label>
+            <select id="profile-pref-model" class="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-500">
+              <option value="tiny">Tiny (~39M) - Ultra Fast</option>
+              <option value="base">Base (~74M) - Default</option>
+              <option value="small">Small (~244M) - Balanced</option>
+              <option value="medium">Medium (~769M) - High Quality</option>
+              <option value="large-v2">Large-v2 (~1550M) - Studio Accuracy</option>
+              <option value="large-v3">Large-v3 (~1550M) - Latest Large</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1.5">Compute Precision</label>
+            <select id="profile-pref-compute" class="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-500">
+              <option value="float16">float16 (Fastest GPU)</option>
+              <option value="int8">int8 (Lightweight / CPU)</option>
+              <option value="float32">float32 (High Precision)</option>
+            </select>
+          </div>
+        </div>
+
+        <button type="submit" id="btn-profile-save-prefs"
+                class="py-2.5 px-4 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-semibold text-xs shadow-md shadow-brand-500/20 transition-all flex items-center gap-2">
+          <i class="fa-solid fa-floppy-disk"></i>
+          <span>Save Preferences</span>
+        </button>
+      </form>
+
+      <!-- Profile Modal Footer -->
+      <div class="pt-5 mt-6 border-t border-slate-800/80 flex items-center justify-between">
+        <button type="button" onclick="logout()" class="py-2 px-3.5 rounded-xl border border-rose-600/40 hover:bg-rose-600/20 text-rose-400 text-xs font-semibold transition-all flex items-center gap-1.5">
           <i class="fa-solid fa-arrow-right-from-bracket"></i>
+          <span>Sign Out</span>
+        </button>
+        <button type="button" onclick="closeProfileModal()" class="py-2 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold transition-all">
+          Close
         </button>
       </div>
     </div>
-  </header>
+  </div>
 
-  <!-- Main Container -->
-  <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
-
-    <!-- ================= VIEW 1: DASHBOARD ================= -->
-    <section id="view-dashboard" class="space-y-6">
-      <!-- Quick Action / Hero Bar -->
-      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-brand-950/20 to-slate-900 border border-slate-800/80 rounded-2xl p-6 shadow-xl">
-        <div>
-          <h1 class="text-2xl font-bold tracking-tight text-white mb-1">Captioner Transcription Studio</h1>
-          <p class="text-sm text-slate-400">Batched faster-whisper ASR, forced wav2vec2 phoneme alignment, and Pyannote speaker diarization.</p>
-        </div>
-        <button onclick="navigate('new-transcription')" class="py-2.5 px-5 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-semibold text-sm shadow-lg shadow-brand-500/20 transition-all flex items-center gap-2 whitespace-nowrap">
-          <i class="fa-solid fa-cloud-arrow-up text-sm"></i>
-          <span>Transcribe Audio</span>
-        </button>
-      </div>
-
-      <!-- Metric Cards -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div class="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5">
-          <div class="flex items-center justify-between text-slate-400 mb-2">
-            <span class="text-xs font-semibold uppercase tracking-wider">Total Transcripts</span>
-            <i class="fa-solid fa-file-audio text-brand-400"></i>
+  <!-- Keyboard Shortcuts Cheat Sheet Modal -->
+  <div id="shortcuts-modal" class="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-xl flex items-center justify-center p-4 transition-all hidden">
+    <div class="glass-surface w-full max-w-lg shadow-2xl p-6 sm:p-7 relative border-white/10 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between mb-5 pb-3 border-b border-slate-800/80">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-xl bg-brand-500/20 text-brand-300 flex items-center justify-center text-sm">
+            <i class="fa-solid fa-keyboard"></i>
           </div>
-          <div id="metric-total-jobs" class="text-2xl font-extrabold text-white">0</div>
-        </div>
-        <div class="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5">
-          <div class="flex items-center justify-between text-slate-400 mb-2">
-            <span class="text-xs font-semibold uppercase tracking-wider">Completed</span>
-            <i class="fa-solid fa-circle-check text-emerald-400"></i>
-          </div>
-          <div id="metric-completed-jobs" class="text-2xl font-extrabold text-white">0</div>
-        </div>
-        <div class="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5">
-          <div class="flex items-center justify-between text-slate-400 mb-2">
-            <span class="text-xs font-semibold uppercase tracking-wider">Audio Hours</span>
-            <i class="fa-solid fa-clock text-indigo-400"></i>
-          </div>
-          <div id="metric-total-duration" class="text-2xl font-extrabold text-white">0.0h</div>
-        </div>
-        <div class="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5">
-          <div class="flex items-center justify-between text-slate-400 mb-2">
-            <span class="text-xs font-semibold uppercase tracking-wider">Processing Engine</span>
-            <i class="fa-solid fa-microchip text-amber-400"></i>
-          </div>
-          <div id="metric-engine" class="text-base font-bold text-white font-mono truncate">CTranslate2</div>
-        </div>
-      </div>
-
-      <!-- Jobs Table Card -->
-      <div class="bg-slate-900/60 border border-slate-800/80 rounded-2xl shadow-xl overflow-hidden">
-        <div class="p-5 border-b border-slate-800/80 flex items-center justify-between">
-          <div class="flex items-center gap-3">
-            <h2 class="text-base font-bold text-white">Recent Transcription Jobs</h2>
-            <button onclick="loadJobs()" class="text-slate-400 hover:text-white text-xs transition-colors" title="Refresh">
-              <i class="fa-solid fa-rotate-right"></i>
-            </button>
-          </div>
-          <span id="active-jobs-counter" class="text-xs px-2.5 py-1 rounded-full bg-brand-500/10 text-brand-400 border border-brand-500/20 font-medium">0 active</span>
-        </div>
-
-        <div class="overflow-x-auto">
-          <table class="w-full text-left text-sm text-slate-300">
-            <thead class="bg-slate-950/60 text-xs text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-800/80">
-              <tr>
-                <th class="py-3.5 px-5">Job / Title</th>
-                <th class="py-3.5 px-5">Config</th>
-                <th class="py-3.5 px-5">Status & Progress</th>
-                <th class="py-3.5 px-5">Duration</th>
-                <th class="py-3.5 px-5">Created</th>
-                <th class="py-3.5 px-5 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody id="jobs-table-body" class="divide-y divide-slate-800/60">
-              <!-- Dynamically populated -->
-              <tr>
-                <td colspan="6" class="py-12 text-center text-slate-500">
-                  <i class="fa-solid fa-folder-open text-2xl mb-2 block"></i>
-                  No transcription jobs yet. Click "Transcribe Audio" to begin!
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <!-- ================= VIEW 2: NEW TRANSCRIPTION ================= -->
-    <section id="view-new-transcription" class="max-w-4xl mx-auto space-y-6 hidden">
-      <div class="border-b border-slate-800 pb-4">
-        <button onclick="navigate('dashboard')" class="text-xs font-semibold text-slate-400 hover:text-white flex items-center gap-1.5 mb-2 transition-colors">
-          <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
-        </button>
-        <h1 class="text-2xl font-bold tracking-tight text-white">Start New Transcription</h1>
-        <p class="text-sm text-slate-400">Upload audio/video and configure batched speech-to-text, phoneme alignment, and diarization.</p>
-      </div>
-
-      <form id="form-transcribe" onsubmit="handleStartTranscription(event)" class="space-y-6">
-        <!-- 1. File Upload Dropzone -->
-        <div class="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-6 shadow-xl space-y-4">
-          <label class="block text-sm font-semibold text-slate-200">1. Audio / Video Source</label>
-          <div id="dropzone" onclick="document.getElementById('audio-file-input').click()"
-               class="border-2 border-dashed border-slate-700/80 hover:border-brand-500/80 bg-slate-950/40 hover:bg-slate-950/80 rounded-xl p-8 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-3">
-            <input type="file" id="audio-file-input" accept="audio/*,video/*,.mp3,.wav,.m4a,.flac,.ogg,.mp4,.mov,.aac" class="hidden" onchange="handleFileSelected(event)" />
-            <div class="w-14 h-14 rounded-2xl bg-brand-500/10 border border-brand-500/20 text-brand-400 flex items-center justify-center text-2xl">
-              <i class="fa-solid fa-file-arrow-up"></i>
-            </div>
-            <div>
-              <p class="text-sm font-semibold text-white mb-0.5">Click to browse or drag & drop audio here</p>
-              <p class="text-xs text-slate-500">Supports WAV, MP3, M4A, FLAC, OGG, AAC, MP4 (Max 500MB)</p>
-            </div>
-            <div id="selected-file-info" class="hidden mt-2 px-3 py-1.5 rounded-lg bg-brand-500/15 border border-brand-500/30 text-brand-300 text-xs font-mono font-medium flex items-center gap-2">
-              <i class="fa-solid fa-check-circle"></i>
-              <span id="selected-file-name">filename.wav</span>
-              <span id="selected-file-size" class="text-slate-400">(0 MB)</span>
-            </div>
-          </div>
-
-          <!-- Title Input -->
           <div>
-            <label class="block text-xs font-semibold text-slate-400 mb-1.5">Project / Job Title (Optional)</label>
-            <input type="text" id="job-title" placeholder="e.g. Podcast Episode 42"
-                   class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-all" />
+            <h2 class="text-base font-bold text-white">Keyboard Shortcuts</h2>
+            <p class="text-xs text-slate-400">Power user studio navigation & timeline control</p>
+          </div>
+        </div>
+        <button onclick="closeShortcutsModal()" class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-colors text-xs" title="Close (Esc)">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="space-y-4 text-xs">
+        <div>
+          <h3 class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">Navigation</h3>
+          <div class="grid grid-cols-2 gap-2">
+            <div class="flex items-center justify-between p-2 rounded-lg bg-slate-900/60 border border-slate-800/80">
+              <span class="text-slate-300">Dashboard</span>
+              <kbd class="px-2 py-0.5 rounded bg-slate-800 border border-slate-700 font-mono text-[10px] text-white">1</kbd>
+            </div>
+            <div class="flex items-center justify-between p-2 rounded-lg bg-slate-900/60 border border-slate-800/80">
+              <span class="text-slate-300">New Transcription</span>
+              <kbd class="px-2 py-0.5 rounded bg-slate-800 border border-slate-700 font-mono text-[10px] text-white">2</kbd>
+            </div>
+            <div class="flex items-center justify-between p-2 rounded-lg bg-slate-900/60 border border-slate-800/80">
+              <span class="text-slate-300">3D Clipper Studio</span>
+              <kbd class="px-2 py-0.5 rounded bg-slate-800 border border-slate-700 font-mono text-[10px] text-white">3</kbd>
+            </div>
+            <div class="flex items-center justify-between p-2 rounded-lg bg-slate-900/60 border border-slate-800/80">
+              <span class="text-slate-300">Clips Library</span>
+              <kbd class="px-2 py-0.5 rounded bg-slate-800 border border-slate-700 font-mono text-[10px] text-white">4</kbd>
+            </div>
+            <div class="flex items-center justify-between p-2 rounded-lg bg-slate-900/60 border border-slate-800/80">
+              <span class="text-slate-300">User Profile</span>
+              <kbd class="px-2 py-0.5 rounded bg-slate-800 border border-slate-700 font-mono text-[10px] text-white">P</kbd>
+            </div>
+            <div class="flex items-center justify-between p-2 rounded-lg bg-slate-900/60 border border-slate-800/80">
+              <span class="text-slate-300">Shortcuts Cheat Sheet</span>
+              <kbd class="px-2 py-0.5 rounded bg-slate-800 border border-slate-700 font-mono text-[10px] text-white">?</kbd>
+            </div>
           </div>
         </div>
 
-        <!-- 2. Model & Performance Presets -->
-        <div class="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-6 shadow-xl space-y-4">
-          <label class="block text-sm font-semibold text-slate-200">2. Model & Accuracy Profile</label>
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div onclick="selectPreset('fast')" id="preset-fast" class="preset-card cursor-pointer p-4 rounded-xl border border-slate-800 bg-slate-950/40 hover:border-brand-500/50 transition-all">
-              <div class="flex items-center justify-between mb-2">
-                <span class="text-xs font-bold text-slate-300">Fast / Light</span>
-                <i class="fa-solid fa-bolt text-amber-400 text-xs"></i>
-              </div>
-              <p class="text-xs text-slate-400">Base model with int8 quantization. Best for quick drafts on CPU.</p>
+        <div>
+          <h3 class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">Media & Timeline Controls</h3>
+          <div class="grid grid-cols-2 gap-2">
+            <div class="flex items-center justify-between p-2 rounded-lg bg-slate-900/60 border border-slate-800/80">
+              <span class="text-slate-300">Play / Pause</span>
+              <kbd class="px-2 py-0.5 rounded bg-slate-800 border border-slate-700 font-mono text-[10px] text-white">Space</kbd>
             </div>
-            <div onclick="selectPreset('balanced')" id="preset-balanced" class="preset-card cursor-pointer p-4 rounded-xl border-2 border-brand-500 bg-brand-500/10 transition-all">
-              <div class="flex items-center justify-between mb-2">
-                <span class="text-xs font-bold text-white">Balanced (Recommended)</span>
-                <i class="fa-solid fa-star text-brand-400 text-xs"></i>
-              </div>
-              <p class="text-xs text-slate-300">Small model with float16. High speed & great accuracy.</p>
+            <div class="flex items-center justify-between p-2 rounded-lg bg-slate-900/60 border border-slate-800/80">
+              <span class="text-slate-300">Seek -5s / +5s</span>
+              <kbd class="px-2 py-0.5 rounded bg-slate-800 border border-slate-700 font-mono text-[10px] text-white">← / →</kbd>
             </div>
-            <div onclick="selectPreset('accurate')" id="preset-accurate" class="preset-card cursor-pointer p-4 rounded-xl border border-slate-800 bg-slate-950/40 hover:border-brand-500/50 transition-all">
-              <div class="flex items-center justify-between mb-2">
-                <span class="text-xs font-bold text-slate-300">Ultra Accurate</span>
-                <i class="fa-solid fa-bullseye text-emerald-400 text-xs"></i>
-              </div>
-              <p class="text-xs text-slate-400">Large-v3 model. SOTA accuracy for complex vocabulary.</p>
+            <div class="flex items-center justify-between p-2 rounded-lg bg-slate-900/60 border border-slate-800/80">
+              <span class="text-slate-300">Set In Point</span>
+              <kbd class="px-2 py-0.5 rounded bg-slate-800 border border-slate-700 font-mono text-[10px] text-white">[ or I</kbd>
+            </div>
+            <div class="flex items-center justify-between p-2 rounded-lg bg-slate-900/60 border border-slate-800/80">
+              <span class="text-slate-300">Set Out Point</span>
+              <kbd class="px-2 py-0.5 rounded bg-slate-800 border border-slate-700 font-mono text-[10px] text-white">] or O</kbd>
+            </div>
+            <div class="flex items-center justify-between p-2 rounded-lg bg-slate-900/60 border border-slate-800/80">
+              <span class="text-slate-300">Toggle Loop</span>
+              <kbd class="px-2 py-0.5 rounded bg-slate-800 border border-slate-700 font-mono text-[10px] text-white">L</kbd>
+            </div>
+            <div class="flex items-center justify-between p-2 rounded-lg bg-slate-900/60 border border-slate-800/80">
+              <span class="text-slate-300">Close Any Modal</span>
+              <kbd class="px-2 py-0.5 rounded bg-slate-800 border border-slate-700 font-mono text-[10px] text-white">Esc</kbd>
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
 
-        <!-- 3. Advanced Parameters Accordion -->
-        <div class="bg-slate-900/60 border border-slate-800/80 rounded-2xl shadow-xl overflow-hidden">
-          <button type="button" onclick="toggleAdvancedSettings()" class="w-full p-5 flex items-center justify-between text-left hover:bg-slate-800/30 transition-colors">
+  <!-- Main App Shell -->
+  <div class="flex h-screen w-screen overflow-hidden relative z-10">
+
+    <!-- ================= PRO SIDEBAR ================= -->
+    <aside class="pro-sidebar w-64 flex-shrink-0 flex flex-col justify-between hidden md:flex z-30 p-4 space-y-4">
+      <div class="space-y-6">
+        <!-- Logo / Workspace Brand -->
+        <div class="flex items-center gap-3 px-2 py-1 cursor-pointer" onclick="navigate('dashboard')">
+          <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-brand-600 via-indigo-600 to-rose-500 flex items-center justify-center text-white text-lg shadow-lg shadow-brand-500/30">
+            <i class="fa-solid fa-wave-square"></i>
+          </div>
+          <div>
             <div class="flex items-center gap-2">
-              <i class="fa-solid fa-gear text-slate-400 text-sm"></i>
-              <span class="text-sm font-semibold text-slate-200">Advanced Pipeline Settings</span>
+              <span class="font-extrabold text-base tracking-tight text-white">Caption<span class="text-brand-400">er</span></span>
+              <span class="text-[9px] px-1.5 py-0.2 rounded-full bg-brand-500/20 text-brand-300 border border-brand-500/30 font-mono font-bold">PRO</span>
             </div>
-            <i id="advanced-chevron" class="fa-solid fa-chevron-down text-slate-500 text-xs transition-transform"></i>
+            <p class="text-[10px] text-slate-400 font-mono">ASR & 3D Clipper Suite</p>
+          </div>
+        </div>
+
+        <!-- Navigation Menu -->
+        <nav class="space-y-1">
+          <button onclick="navigate('dashboard')" id="nav-dashboard"
+                  class="w-full px-3.5 py-2.5 rounded-xl text-xs font-semibold text-white bg-slate-800/90 transition-all flex items-center justify-between border border-slate-700/60 shadow-sm group">
+            <div class="flex items-center gap-3">
+              <i class="fa-solid fa-table-columns text-sm text-brand-400"></i>
+              <span>Dashboard</span>
+            </div>
+            <span class="text-[10px] text-slate-500 font-mono group-hover:text-slate-300">1</span>
           </button>
 
-          <div id="advanced-settings-body" class="p-6 border-t border-slate-800/80 space-y-5 hidden bg-slate-950/30">
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <!-- Whisper Model -->
-              <div>
-                <label class="block text-xs font-semibold text-slate-400 mb-1.5">Whisper Model Size</label>
-                <select id="config-model-size" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500">
-                  <option value="tiny">Tiny (~39M) - Lightest</option>
-                  <option value="base">Base (~74M) - Fast</option>
-                  <option value="small" selected>Small (~244M) - Recommended</option>
-                  <option value="medium">Medium (~769M) - High Quality</option>
-                  <option value="large-v2">Large-v2 (~1550M) - Top Accuracy</option>
-                  <option value="large-v3">Large-v3 (~1550M) - Latest Large</option>
-                </select>
-              </div>
+          <button onclick="navigate('new-transcription')" id="nav-new-transcription"
+                  class="w-full px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800/60 transition-all flex items-center justify-between border border-transparent group">
+            <div class="flex items-center gap-3">
+              <i class="fa-solid fa-microphone-lines text-sm text-indigo-400"></i>
+              <span>Transcription Studio</span>
+            </div>
+            <span class="text-[10px] text-slate-500 font-mono group-hover:text-slate-300">2</span>
+          </button>
 
-              <!-- Device -->
-              <div>
-                <label class="block text-xs font-semibold text-slate-400 mb-1.5">Execution Device</label>
-                <select id="config-device" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500">
-                  <option value="cuda">CUDA (NVIDIA GPU)</option>
-                  <option value="cpu" selected>CPU</option>
-                </select>
-              </div>
+          <button onclick="navigate('clipper')" id="nav-clipper"
+                  class="w-full px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800/60 transition-all flex items-center justify-between border border-transparent group">
+            <div class="flex items-center gap-3">
+              <i class="fa-solid fa-scissors text-sm text-rose-400 group-hover:rotate-12 transition-transform"></i>
+              <span>3D Clipper Studio</span>
+            </div>
+            <span class="px-1.5 py-0.5 rounded-full text-[9px] font-extrabold bg-gradient-to-r from-rose-500/20 to-purple-500/20 text-rose-300 border border-rose-500/30 font-mono">3D</span>
+          </button>
 
-              <!-- Compute Type -->
-              <div>
-                <label class="block text-xs font-semibold text-slate-400 mb-1.5">Precision / Compute Type</label>
-                <select id="config-compute-type" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500">
-                  <option value="float16">float16 (Best for GPU)</option>
-                  <option value="int8" selected>int8 (Best for CPU / Low VRAM)</option>
-                  <option value="float32">float32 (Full precision)</option>
-                </select>
-              </div>
+          <button onclick="navigate('clips')" id="nav-clips"
+                  class="w-full px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800/60 transition-all flex items-center justify-between border border-transparent group">
+            <div class="flex items-center gap-3">
+              <i class="fa-solid fa-film text-sm text-cyan-400"></i>
+              <span>Clips Library</span>
+            </div>
+            <span id="nav-clips-badge" class="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-mono">0</span>
+          </button>
 
-              <!-- Batch Size -->
-              <div>
-                <label class="block text-xs font-semibold text-slate-400 mb-1.5">Batch Size (<span id="batch-val">16</span>)</label>
-                <input type="range" id="config-batch-size" min="1" max="32" value="16" oninput="document.getElementById('batch-val').textContent = this.value" class="w-full accent-brand-500" />
-              </div>
+          <button onclick="navigate('settings')" id="nav-settings"
+                  class="w-full px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800/60 transition-all flex items-center justify-between border border-transparent group">
+            <div class="flex items-center gap-3">
+              <i class="fa-solid fa-sliders text-sm text-amber-400"></i>
+              <span>Engine Diagnostics</span>
+            </div>
+            <span class="text-[10px] text-slate-500 font-mono group-hover:text-slate-300">5</span>
+          </button>
+        </nav>
+      </div>
 
-              <!-- Language -->
-              <div>
-                <label class="block text-xs font-semibold text-slate-400 mb-1.5">Audio Language</label>
-                <select id="config-language" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500">
-                  <option value="auto" selected>Auto-Detect Language</option>
-                  <option value="en">English (en)</option>
-                  <option value="es">Spanish (es)</option>
-                  <option value="fr">French (fr)</option>
-                  <option value="de">German (de)</option>
-                  <option value="it">Italian (it)</option>
-                  <option value="pt">Portuguese (pt)</option>
-                  <option value="ru">Russian (ru)</option>
-                  <option value="zh">Chinese (zh)</option>
-                  <option value="ja">Japanese (ja)</option>
-                  <option value="hi">Hindi (hi)</option>
-                  <option value="ar">Arabic (ar)</option>
-                  <option value="nl">Dutch (nl)</option>
-                  <option value="pl">Polish (pl)</option>
-                  <option value="ko">Korean (ko)</option>
-                </select>
-              </div>
+      <!-- Bottom Sidebar Dock: GPU Hardware & User Account -->
+      <div class="space-y-3">
+        <!-- Hardware Diagnostics Card -->
+        <div id="system-badge" class="p-3 rounded-xl bg-slate-950/70 border border-slate-800/80 space-y-1.5">
+          <div class="flex items-center justify-between text-[11px]">
+            <span class="text-slate-400 font-medium flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span>Hardware Acceleration</span>
+            </span>
+            <span class="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-400 font-mono font-bold">READY</span>
+          </div>
+          <p id="gpu-info-text" class="text-xs font-mono font-semibold text-slate-200 truncate">Checking hardware...</p>
+        </div>
 
-              <!-- Context-aware batching -->
-              <div class="flex items-center gap-3 pt-6">
-                <input type="checkbox" id="config-interleaved" class="w-4 h-4 rounded text-brand-600 focus:ring-brand-500 border-slate-700 bg-slate-900" />
-                <label for="config-interleaved" class="text-xs text-slate-300 font-medium cursor-pointer">
-                  Interleaved Context (Maintains rolling context across batches)
-                </label>
+        <!-- User Profile Pill -->
+        <div id="user-profile-menu" onclick="openProfileModal()" class="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/60 hover:bg-slate-800/80 border border-slate-800/80 hover:border-brand-500/50 cursor-pointer transition-all group" title="Click to view profile & account settings (P)">
+          <div class="flex items-center gap-2.5 overflow-hidden">
+            <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-brand-600 to-indigo-500 flex items-center justify-center text-xs text-white font-bold flex-shrink-0 group-hover:scale-105 transition-transform shadow-md shadow-brand-500/20">
+              <span id="user-initials">U</span>
+            </div>
+            <div class="truncate">
+              <span id="user-display-name" class="text-xs font-semibold text-white block truncate">User</span>
+              <span class="text-[10px] text-brand-400 font-mono flex items-center gap-1">
+                <span>Account & Token</span>
+                <i class="fa-solid fa-chevron-right text-[8px] opacity-70 group-hover:translate-x-0.5 transition-transform"></i>
+              </span>
+            </div>
+          </div>
+          <button onclick="event.stopPropagation(); logout();" title="Sign Out" class="w-7 h-7 rounded-lg hover:bg-rose-500/20 hover:text-rose-400 text-slate-400 flex items-center justify-center transition-colors text-xs flex-shrink-0">
+            <i class="fa-solid fa-arrow-right-from-bracket"></i>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ================= MAIN STAGE ================= -->
+    <div class="flex-1 flex flex-col min-w-0 overflow-y-auto">
+
+      <!-- Top Header Action HUD -->
+      <header class="border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-xl sticky top-0 z-40 px-6 py-3.5 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <!-- Mobile Menu Toggle -->
+          <button onclick="navigate('dashboard')" class="md:hidden w-8 h-8 rounded-lg bg-slate-800 text-slate-300 flex items-center justify-center text-xs">
+            <i class="fa-solid fa-bars"></i>
+          </button>
+          <div>
+            <h2 id="top-header-title" class="text-sm font-bold text-white flex items-center gap-2">
+              <span>Studio Dashboard</span>
+            </h2>
+            <p class="text-[11px] text-slate-400 hidden sm:block">Batched ASR, Forced Phoneme Alignment & Frame-Accurate Clipper</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2.5">
+          <!-- Keyboard Shortcuts Button -->
+          <button type="button" onclick="openShortcutsModal()" class="w-8 h-8 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center text-xs border border-slate-700/60 transition-all shadow-sm" title="Keyboard Shortcuts (?)">
+            <i class="fa-solid fa-keyboard"></i>
+          </button>
+
+          <!-- Quick Action Buttons -->
+          <button onclick="navigate('new-transcription')" class="py-1.5 px-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md shadow-indigo-600/20 transition-all flex items-center gap-1.5">
+            <i class="fa-solid fa-plus text-[10px]"></i>
+            <span>Transcribe</span>
+          </button>
+          <button onclick="navigate('clipper')" class="py-1.5 px-3.5 rounded-xl bg-gradient-to-r from-rose-600 to-purple-600 hover:from-rose-500 hover:to-purple-500 text-white text-xs font-semibold shadow-md shadow-rose-600/20 transition-all flex items-center gap-1.5">
+            <i class="fa-solid fa-scissors text-[10px]"></i>
+            <span>3D Clipper</span>
+          </button>
+
+          <!-- User Profile Avatar Pill in Header -->
+          <button type="button" onclick="openProfileModal()" class="flex items-center gap-2 py-1 px-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-slate-700/60 transition-all text-xs group" title="Account & API Token (P)">
+            <div class="w-6 h-6 rounded-lg bg-gradient-to-tr from-brand-600 to-indigo-500 flex items-center justify-center text-[10px] text-white font-bold">
+              <span id="header-user-initials">U</span>
+            </div>
+            <span id="header-user-name" class="font-semibold text-xs hidden sm:inline max-w-[100px] truncate">User</span>
+            <i class="fa-solid fa-gear text-slate-400 group-hover:text-white text-[11px]"></i>
+          </button>
+        </div>
+      </header>
+
+      <!-- Main Container Views -->
+      <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+
+        <!-- ================= VIEW 1: COMMAND DASHBOARD ================= -->
+        <section id="view-dashboard" class="space-y-6">
+          <!-- Bento Hero Banner -->
+          <div class="glass-surface p-6 sm:p-8 relative overflow-hidden">
+            <div class="absolute -right-12 -bottom-12 w-80 h-80 bg-gradient-to-tr from-brand-600/25 via-indigo-600/20 to-rose-500/20 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 relative z-10">
+              <div class="space-y-2">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="px-2.5 py-0.5 rounded-full bg-brand-500/15 border border-brand-500/30 text-brand-300 text-[10px] font-bold tracking-wide uppercase">CTranslate2 & faster-whisper</span>
+                  <span class="px-2.5 py-0.5 rounded-full bg-cyan-500/15 border border-cyan-500/30 text-cyan-300 text-[10px] font-bold tracking-wide uppercase">Wav2Vec2 Phoneme Alignment</span>
+                  <span class="px-2.5 py-0.5 rounded-full bg-rose-500/15 border border-rose-500/30 text-rose-300 text-[10px] font-bold tracking-wide uppercase">0-Glitch 3D Clipper</span>
+                </div>
+                <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">Universal Speech & 3D Media Studio</h1>
+                <p class="text-sm text-slate-300 max-w-2xl">Transcribe hours of speech with word-level karaoke, separate speakers with Pyannote diarization, and create frame-accurate clips with burned subtitles in milliseconds.</p>
+              </div>
+              <div class="flex items-center gap-3 flex-wrap">
+                <button onclick="navigate('new-transcription')" class="py-2.5 px-5 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-semibold text-sm shadow-xl shadow-brand-500/25 transition-all flex items-center gap-2">
+                  <i class="fa-solid fa-cloud-arrow-up text-sm"></i>
+                  <span>New Transcription</span>
+                </button>
+                <button onclick="navigate('clipper')" class="py-2.5 px-5 rounded-xl bg-gradient-to-r from-rose-600 via-pink-600 to-purple-600 hover:from-rose-500 hover:to-purple-500 text-white font-semibold text-sm shadow-xl shadow-rose-600/25 transition-all flex items-center gap-2">
+                  <i class="fa-solid fa-scissors text-sm"></i>
+                  <span>Launch 3D Clipper</span>
+                </button>
               </div>
             </div>
+          </div>
 
-            <!-- Alignment & Diarization Switches -->
-            <div class="pt-4 border-t border-slate-800/80 space-y-4">
-              <div class="flex items-center justify-between p-4 rounded-xl bg-slate-900/60 border border-slate-800">
-                <div class="space-y-0.5">
-                  <span class="text-sm font-semibold text-white">Forced Phoneme Alignment (wav2vec 2.0)</span>
-                  <p class="text-xs text-slate-400">Aligns exact word-level and character timestamps using acoustic emissions.</p>
-                </div>
-                <label class="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" id="config-align" checked class="sr-only peer">
-                  <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-600"></div>
-                </label>
+          <!-- Metric Cards -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div onclick="setJobFilter('all')" class="glass-surface p-5 cursor-pointer hover:border-brand-500/50 hover:bg-slate-800/40 transition-all group" title="Filter table to All Transcripts">
+              <div class="flex items-center justify-between text-slate-400 mb-2">
+                <span class="text-xs font-semibold uppercase tracking-wider group-hover:text-brand-300 transition-colors">Total Transcripts</span>
+                <i class="fa-solid fa-file-audio text-brand-400"></i>
               </div>
+              <div id="metric-total-jobs" class="text-2xl font-extrabold text-white">0</div>
+              <p class="text-[10px] text-slate-500 mt-1 font-mono">Click to view all</p>
+            </div>
+            <div onclick="setJobFilter('completed')" class="glass-surface p-5 cursor-pointer hover:border-emerald-500/50 hover:bg-slate-800/40 transition-all group" title="Filter table to Completed Jobs">
+              <div class="flex items-center justify-between text-slate-400 mb-2">
+                <span class="text-xs font-semibold uppercase tracking-wider group-hover:text-emerald-300 transition-colors">Completed Jobs</span>
+                <i class="fa-solid fa-circle-check text-emerald-400"></i>
+              </div>
+              <div id="metric-completed-jobs" class="text-2xl font-extrabold text-white">0</div>
+              <p class="text-[10px] text-emerald-500/80 mt-1 font-mono">Click to view completed</p>
+            </div>
+            <div onclick="navigate('clips')" class="glass-surface p-5 cursor-pointer hover:border-rose-500/50 hover:bg-slate-800/40 transition-all group" title="Open Clips Library">
+              <div class="flex items-center justify-between text-slate-400 mb-2">
+                <span class="text-xs font-semibold uppercase tracking-wider group-hover:text-rose-300 transition-colors">Media Clips Created</span>
+                <i class="fa-solid fa-film text-rose-400"></i>
+              </div>
+              <div id="metric-total-clips" class="text-2xl font-extrabold text-white">0</div>
+              <p class="text-[10px] text-rose-400/80 mt-1 font-mono">Click to view clips library</p>
+            </div>
+            <div onclick="navigate('settings')" class="glass-surface p-5 cursor-pointer hover:border-amber-500/50 hover:bg-slate-800/40 transition-all group" title="Inspect Hardware Diagnostics & Settings">
+              <div class="flex items-center justify-between text-slate-400 mb-2">
+                <span class="text-xs font-semibold uppercase tracking-wider group-hover:text-amber-300 transition-colors">Processing Engine</span>
+                <i class="fa-solid fa-microchip text-amber-400"></i>
+              </div>
+              <div id="metric-engine" class="text-sm font-bold text-white font-mono truncate">0ms Copy + WhisperX</div>
+              <p class="text-[10px] text-amber-400/80 mt-1 font-mono">Click for diagnostics</p>
+            </div>
+          </div>
 
-              <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800 space-y-3">
-                <div class="flex items-center justify-between">
-                  <div class="space-y-0.5">
-                    <span class="text-sm font-semibold text-white">Speaker Diarization (Pyannote Audio)</span>
-                    <p class="text-xs text-slate-400">Detects and attributes distinct speaker labels to each word.</p>
-                  </div>
-                  <label class="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" id="config-diarize" onchange="toggleDiarizeFields(this.checked)" class="sr-only peer">
-                    <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-600"></div>
-                  </label>
+          <!-- Recent Media Clips Strip -->
+          <div class="glass-surface p-5 space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2.5">
+                <div class="w-7 h-7 rounded-lg bg-rose-500/20 text-rose-400 flex items-center justify-center text-xs">
+                  <i class="fa-solid fa-scissors"></i>
                 </div>
+                <h2 class="text-sm font-bold text-white">Recent Media Clips</h2>
+              </div>
+              <button onclick="navigate('clips')" class="text-xs text-rose-400 hover:text-rose-300 font-semibold transition-colors flex items-center gap-1">
+                <span>View Clips Library</span>
+                <i class="fa-solid fa-arrow-right text-[10px]"></i>
+              </button>
+            </div>
+            <div id="dashboard-recent-clips" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+              <p class="text-xs text-slate-500 col-span-full py-4 text-center">No clips generated yet. Open the <button onclick="navigate('clipper')" class="text-rose-400 underline font-semibold">3D Clipper Studio</button> to create your first clip!</p>
+            </div>
+          </div>
 
-                <!-- Diarization Sub-settings -->
-                <div id="diarize-options" class="hidden pt-3 border-t border-slate-800 space-y-3">
+          <!-- Jobs Table Card -->
+          <div class="glass-surface shadow-xl overflow-hidden">
+            <!-- Enhanced Table Header & Controls Toolbar -->
+            <div class="p-4 sm:p-5 border-b border-slate-800/80 space-y-4">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div class="flex items-center gap-3">
+                  <div class="w-8 h-8 rounded-xl bg-brand-500/20 text-brand-300 flex items-center justify-center text-xs">
+                    <i class="fa-solid fa-list-check"></i>
+                  </div>
                   <div>
-                    <label class="block text-xs font-semibold text-slate-400 mb-1">Hugging Face Read Token</label>
-                    <input type="password" id="config-hf-token" placeholder="hf_xxxxxxxxxxxxxxxxxxxxxxx"
-                           class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-brand-500 font-mono" />
-                    <p class="text-[11px] text-slate-500 mt-1">Requires agreeing to pyannote/speaker-diarization user terms on Hugging Face.</p>
+                    <h2 class="text-sm font-bold text-white flex items-center gap-2">
+                      <span>Transcription Jobs Queue</span>
+                      <span id="active-jobs-counter" class="text-[10px] px-2 py-0.5 rounded-full bg-brand-500/10 text-brand-400 border border-brand-500/20 font-mono font-medium">0 active</span>
+                    </h2>
+                    <p class="text-[11px] text-slate-400">All audio and video speech processing workflows</p>
                   </div>
-                  <div class="grid grid-cols-2 gap-3">
+                </div>
+
+                <div class="flex items-center gap-2">
+                  <button type="button" onclick="loadJobs()" class="py-1.5 px-3 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold border border-slate-700/60 transition-all flex items-center gap-1.5 shadow-sm" title="Refresh Table">
+                    <i class="fa-solid fa-rotate-right" id="refresh-jobs-icon"></i>
+                    <span>Refresh</span>
+                  </button>
+                  <button type="button" onclick="navigate('new-transcription')" class="py-1.5 px-3 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold shadow-md shadow-brand-500/20 transition-all flex items-center gap-1.5">
+                    <i class="fa-solid fa-plus text-[10px]"></i>
+                    <span>New Job</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Search & Filter Controls -->
+              <div class="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 pt-1">
+                <!-- Filter Pills -->
+                <div class="inline-flex rounded-xl p-1 bg-slate-950/80 border border-slate-800/90 text-xs font-medium overflow-x-auto">
+                  <button type="button" onclick="setJobFilter('all')" id="filter-job-all"
+                          class="py-1 px-3 rounded-lg bg-indigo-600 text-white font-semibold transition-all">
+                    All (<span id="count-job-all">0</span>)
+                  </button>
+                  <button type="button" onclick="setJobFilter('completed')" id="filter-job-completed"
+                          class="py-1 px-3 rounded-lg text-slate-400 hover:text-white transition-all">
+                    Completed (<span id="count-job-completed">0</span>)
+                  </button>
+                  <button type="button" onclick="setJobFilter('processing')" id="filter-job-processing"
+                          class="py-1 px-3 rounded-lg text-slate-400 hover:text-white transition-all">
+                    Processing (<span id="count-job-processing">0</span>)
+                  </button>
+                  <button type="button" onclick="setJobFilter('failed')" id="filter-job-failed"
+                          class="py-1 px-3 rounded-lg text-slate-400 hover:text-white transition-all">
+                    Failed (<span id="count-job-failed">0</span>)
+                  </button>
+                </div>
+
+                <!-- Search Input with Clear Button -->
+                <div class="relative flex-1 max-w-sm">
+                  <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+                  <input type="text" id="dashboard-search-input" oninput="handleDashboardSearch(this.value)"
+                         placeholder="Search by title, filename, model..."
+                         class="w-full bg-slate-950/90 border border-slate-800 rounded-xl pl-8 pr-7 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 transition-colors" />
+                  <button type="button" onclick="clearDashboardSearch()" id="btn-clear-dash-search" class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 text-xs" title="Clear Search">
+                    <i class="fa-solid fa-xmark"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-sm text-slate-300">
+                <thead class="bg-slate-950/60 text-xs text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-800/80">
+                  <tr>
+                    <th class="py-3.5 px-5">Job / Title</th>
+                    <th class="py-3.5 px-5">Config</th>
+                    <th class="py-3.5 px-5">Status & Progress</th>
+                    <th class="py-3.5 px-5">Duration</th>
+                    <th class="py-3.5 px-5">Created</th>
+                    <th class="py-3.5 px-5 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="jobs-table-body" class="divide-y divide-slate-800/60">
+                  <tr>
+                    <td colspan="6" class="py-12 text-center text-slate-500">
+                      <i class="fa-solid fa-folder-open text-2xl mb-2 block"></i>
+                      No transcription jobs yet. Click "New Transcription" to begin!
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================= VIEW 2: NEW TRANSCRIPTION STUDIO ================= -->
+        <section id="view-new-transcription" class="max-w-4xl mx-auto space-y-6 hidden">
+          <div class="border-b border-slate-800 pb-4">
+            <button onclick="navigate('dashboard')" class="text-xs font-semibold text-slate-400 hover:text-white flex items-center gap-1.5 mb-2 transition-colors">
+              <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
+            </button>
+            <h1 class="text-2xl font-extrabold tracking-tight text-white">Create New Transcription Job</h1>
+            <p class="text-sm text-slate-400">Configure Whisper ASR model, phoneme alignment, and Pyannote speaker diarization.</p>
+          </div>
+
+          <form id="form-transcribe" onsubmit="handleStartTranscription(event)" class="space-y-6">
+            <!-- Media Upload Box -->
+            <div class="glass-surface p-6">
+              <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-3">Target Media File</label>
+              <div id="drop-zone"
+                   onclick="document.getElementById('file-input').click()"
+                   ondragover="handleDragOver(event)"
+                   ondragleave="handleDragLeave(event)"
+                   ondrop="handleDrop(event)"
+                   class="border-2 border-dashed border-slate-700 hover:border-brand-500 rounded-2xl p-8 text-center cursor-pointer transition-all bg-slate-950/40 hover:bg-slate-900/60">
+                <input type="file" id="file-input" onchange="handleFileSelect(event)" accept="audio/*,video/*" class="hidden" />
+                <div id="drop-prompt" class="space-y-3">
+                  <div class="w-14 h-14 rounded-2xl bg-brand-500/10 border border-brand-500/20 text-brand-400 flex items-center justify-center mx-auto text-2xl shadow-inner">
+                    <i class="fa-solid fa-cloud-arrow-up"></i>
+                  </div>
+                  <div>
+                    <span class="font-bold text-white text-sm block">Click to upload or drag & drop</span>
+                    <span class="text-xs text-slate-400">Supports all formats: MP4, MKV, MOV, WebM, MP3, WAV, FLAC, AAC, M4A</span>
+                  </div>
+                </div>
+
+                <div id="file-preview" class="hidden items-center justify-between p-3 bg-slate-900 border border-slate-800 rounded-xl">
+                  <div class="flex items-center gap-3 truncate">
+                    <i class="fa-solid fa-file-waveform text-brand-400 text-lg"></i>
+                    <div class="text-left truncate">
+                      <span id="file-name" class="font-semibold text-white text-xs block truncate">filename.wav</span>
+                      <span id="file-size" class="text-[10px] text-slate-400 font-mono">0 MB</span>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span id="file-duration" class="text-xs font-mono text-indigo-400">--:--</span>
+                    <button type="button" onclick="clearSelectedFile(event)" class="text-slate-400 hover:text-rose-400 text-xs p-1">
+                      <i class="fa-solid fa-xmark"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Parameters Grid -->
+            <div class="glass-surface p-6 space-y-6">
+              <!-- Quick Model Presets -->
+              <div>
+                <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2.5">⚡ Quick Pipeline Presets</label>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <button type="button" onclick="selectModelPreset('fast')" id="preset-card-fast"
+                          class="p-3.5 rounded-xl border border-slate-800 hover:border-brand-500/50 bg-slate-950/60 hover:bg-slate-900/80 text-left transition-all group">
+                    <div class="flex items-center justify-between mb-1">
+                      <span class="text-xs font-bold text-white group-hover:text-brand-300">⚡ Lightning Draft</span>
+                      <span class="text-[9px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-400 font-mono">tiny</span>
+                    </div>
+                    <p class="text-[11px] text-slate-500">Ultra-fast transcription for quick drafts & scratch files.</p>
+                  </button>
+
+                  <button type="button" onclick="selectModelPreset('balanced')" id="preset-card-balanced"
+                          class="p-3.5 rounded-xl border border-brand-500/60 bg-brand-500/10 text-left transition-all group">
+                    <div class="flex items-center justify-between mb-1">
+                      <span class="text-xs font-bold text-white group-hover:text-brand-300">🎯 Balanced Pro</span>
+                      <span class="text-[9px] px-1.5 py-0.2 rounded bg-brand-500/20 text-brand-300 font-mono">base</span>
+                    </div>
+                    <p class="text-[11px] text-slate-300">Default sweet spot between fast execution and high accuracy.</p>
+                  </button>
+
+                  <button type="button" onclick="selectModelPreset('accurate')" id="preset-card-accurate"
+                          class="p-3.5 rounded-xl border border-slate-800 hover:border-rose-500/50 bg-slate-950/60 hover:bg-slate-900/80 text-left transition-all group">
+                    <div class="flex items-center justify-between mb-1">
+                      <span class="text-xs font-bold text-white group-hover:text-rose-300">💎 Studio Precision</span>
+                      <span class="text-[9px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-400 font-mono">large-v3</span>
+                    </div>
+                    <p class="text-[11px] text-slate-500">Maximum accuracy for accents, technical audio, & jargon.</p>
+                  </button>
+                </div>
+              </div>
+
+              <h2 class="text-sm font-bold text-white border-b border-slate-800 pb-3">Pipeline Configuration</h2>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-300 mb-1.5">Whisper ASR Model</label>
+                  <select id="config-model" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-brand-500">
+                    <option value="tiny">tiny (Ultra fast, lightweight)</option>
+                    <option value="base" selected>base (Default, balanced speed & accuracy)</option>
+                    <option value="small">small (High accuracy)</option>
+                    <option value="medium">medium (Very high accuracy)</option>
+                    <option value="large-v3">large-v3 (State-of-the-art accuracy)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label class="block text-xs font-semibold text-slate-300 mb-1.5">Execution Device</label>
+                  <select id="config-device" onchange="updateComputeTypes(this.value)" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-brand-500">
+                    <option value="cuda">CUDA (NVIDIA GPU Acceleration)</option>
+                    <option value="cpu" selected>CPU (Threaded CTranslate2)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label class="block text-xs font-semibold text-slate-300 mb-1.5">Compute Precision</label>
+                  <select id="config-compute-type" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-brand-500">
+                    <option value="int8" selected>int8 (Fastest CPU precision)</option>
+                    <option value="float16">float16 (Standard GPU)</option>
+                    <option value="float32">float32 (Full precision)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label class="block text-xs font-semibold text-slate-300 mb-1.5">Spoken Language</label>
+                  <select id="config-language" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-brand-500">
+                    <option value="" selected>Auto-detect Language</option>
+                    <option value="en">English (en)</option>
+                    <option value="es">Spanish (es)</option>
+                    <option value="fr">French (fr)</option>
+                    <option value="de">German (de)</option>
+                    <option value="hi">Hindi (hi)</option>
+                    <option value="zh">Chinese (zh)</option>
+                    <option value="ja">Japanese (ja)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label class="block text-xs font-semibold text-slate-300 mb-1.5">Batch Size</label>
+                  <input type="number" id="config-batch-size" min="1" max="64" value="16"
+                         class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs font-mono text-white focus:outline-none focus:border-brand-500" />
+                </div>
+
+                <div>
+                  <label class="block text-xs font-semibold text-slate-300 mb-1.5">HuggingFace Token (Pyannote Diarization)</label>
+                  <input type="password" id="config-hf-token" placeholder="hf_••••••••"
+                         class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs font-mono text-white focus:outline-none focus:border-brand-500" />
+                </div>
+              </div>
+
+              <!-- Feature Toggles -->
+              <div class="border-t border-slate-800 pt-4 space-y-3">
+                <label class="flex items-center gap-3 cursor-pointer">
+                  <input type="checkbox" id="config-vad-filter" checked class="w-4 h-4 rounded text-brand-600 bg-slate-950 border-slate-800 focus:ring-0" />
+                  <div>
+                    <span class="text-xs font-semibold text-white block">Silero VAD Speech Segmentation</span>
+                    <span class="text-[11px] text-slate-400">Pre-filters background silence to boost processing speed up to 4x.</span>
+                  </div>
+                </label>
+
+                <label class="flex items-center gap-3 cursor-pointer">
+                  <input type="checkbox" id="config-align-words" checked class="w-4 h-4 rounded text-brand-600 bg-slate-950 border-slate-800 focus:ring-0" />
+                  <div>
+                    <span class="text-xs font-semibold text-white block">Wav2Vec2 Forced Phoneme Alignment</span>
+                    <span class="text-[11px] text-slate-400">Extracts millisecond word timestamps for karaoke playback and precise clipping.</span>
+                  </div>
+                </label>
+
+                <label class="flex items-center gap-3 cursor-pointer">
+                  <input type="checkbox" id="config-diarize" onchange="toggleDiarizeOptions(this.checked)" class="w-4 h-4 rounded text-brand-600 bg-slate-950 border-slate-800 focus:ring-0" />
+                  <div>
+                    <span class="text-xs font-semibold text-white block">Pyannote Speaker Diarization</span>
+                    <span class="text-[11px] text-slate-400">Identifies unique voices and labels who spoke when. (Requires HuggingFace token).</span>
+                  </div>
+                </label>
+
+                <div id="diarize-options" class="hidden grid grid-cols-2 gap-4 pl-7 pt-1">
+                  <div>
+                    <label class="block text-[11px] text-slate-400 mb-1">Min Speakers (optional)</label>
+                    <input type="number" id="config-min-speakers" min="1" placeholder="Auto" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-white" />
+                  </div>
+                  <div>
+                    <label class="block text-[11px] text-slate-400 mb-1">Max Speakers (optional)</label>
+                    <input type="number" id="config-max-speakers" min="1" placeholder="Auto" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-white" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <button type="submit" id="btn-submit-job"
+                    class="w-full py-3 px-6 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-bold text-sm shadow-xl shadow-brand-500/25 transition-all flex items-center justify-center gap-2">
+              <i class="fa-solid fa-bolt"></i>
+              <span>Start Speech Pipeline</span>
+            </button>
+          </form>
+        </section>
+
+        <!-- ================= VIEW 3: TRANSCRIPT & AUDIO EDITOR STUDIO ================= -->
+        <section id="view-editor" class="space-y-6 hidden">
+          <!-- Editor Header -->
+          <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-800/80 pb-4">
+            <div>
+              <button onclick="navigate('dashboard')" class="text-xs font-semibold text-slate-400 hover:text-white flex items-center gap-1.5 mb-1.5 transition-colors">
+                <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
+              </button>
+              <div class="flex items-center gap-3">
+                <h1 id="editor-job-title" class="text-2xl font-bold tracking-tight text-white">Audio Transcript</h1>
+                <span id="editor-job-status-badge" class="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">Completed</span>
+              </div>
+            </div>
+
+            <!-- Export & Action Buttons -->
+            <div class="flex items-center gap-2 flex-wrap">
+              <button onclick="openJobInClipperStudio()" id="btn-clip-modal"
+                      class="py-2 px-3.5 rounded-xl bg-gradient-to-r from-rose-600 to-purple-600 hover:from-rose-500 hover:to-purple-500 text-white font-semibold text-xs shadow-md transition-all flex items-center gap-1.5">
+                <i class="fa-solid fa-scissors"></i>
+                <span>Open in 3D Clipper</span>
+              </button>
+              <button onclick="saveTranscriptEdits()" id="btn-save-edits"
+                      class="py-2 px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs shadow-md transition-all flex items-center gap-1.5">
+                <i class="fa-solid fa-floppy-disk"></i>
+                <span>Save Changes</span>
+              </button>
+              <div class="relative inline-block text-left" id="export-dropdown-container">
+                <button onclick="toggleExportMenu()"
+                        class="py-2 px-3.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-semibold text-xs transition-all flex items-center gap-1.5">
+                  <i class="fa-solid fa-download"></i>
+                  <span>Export</span>
+                  <i class="fa-solid fa-caret-down text-[10px]"></i>
+                </button>
+                <div id="export-menu" class="hidden absolute right-0 mt-2 w-48 rounded-xl bg-slate-900 border border-slate-800 shadow-2xl py-1.5 z-30">
+                  <button onclick="downloadExport('srt')" class="w-full text-left px-4 py-2 text-xs text-slate-300 hover:bg-slate-800 flex items-center gap-2">
+                    <i class="fa-regular fa-closed-captioning text-brand-400"></i> SRT Subtitles (.srt)
+                  </button>
+                  <button onclick="downloadExport('vtt')" class="w-full text-left px-4 py-2 text-xs text-slate-300 hover:bg-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-file-lines text-indigo-400"></i> WebVTT (.vtt)
+                  </button>
+                  <button onclick="downloadExport('json')" class="w-full text-left px-4 py-2 text-xs text-slate-300 hover:bg-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-code text-amber-400"></i> JSON Payload (.json)
+                  </button>
+                  <button onclick="downloadExport('txt')" class="w-full text-left px-4 py-2 text-xs text-slate-300 hover:bg-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-align-left text-emerald-400"></i> Plain Text (.txt)
+                  </button>
+                  <button onclick="downloadExport('tsv')" class="w-full text-left px-4 py-2 text-xs text-slate-300 hover:bg-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-table text-cyan-400"></i> Tab Separated (.tsv)
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Progress Banner -->
+          <div id="editor-progress-card" class="bg-brand-950/30 border border-brand-500/30 rounded-2xl p-5 space-y-3 hidden">
+            <div class="flex items-center justify-between text-xs">
+              <div class="flex items-center gap-2 text-brand-300 font-semibold">
+                <i class="fa-solid fa-spinner fa-spin"></i>
+                <span id="editor-progress-step">Transcribing audio with faster-whisper...</span>
+              </div>
+              <span id="editor-progress-pct" class="font-mono font-bold text-brand-400">45%</span>
+            </div>
+            <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+              <div id="editor-progress-bar" class="h-full bg-gradient-to-r from-brand-600 to-indigo-500 rounded-full transition-all duration-300" style="width: 45%;"></div>
+            </div>
+          </div>
+
+          <!-- Cinema Player Deck -->
+          <div class="glass-surface p-4 sticky top-[60px] z-30 space-y-3">
+            <div id="video-viewport" class="hidden w-full max-h-80 rounded-xl bg-black border border-slate-800 flex items-center justify-center overflow-hidden relative">
+              <video id="video-player" class="max-h-80 w-full object-contain" preload="metadata"></video>
+            </div>
+            <audio id="audio-player" class="hidden" preload="metadata"></audio>
+
+            <!-- Scrubber -->
+            <div class="space-y-1">
+              <div class="flex items-center justify-between text-xs font-mono text-slate-400">
+                <span id="player-current-time">00:00.00</span>
+                <span id="player-total-time">00:00.00</span>
+              </div>
+              <input type="range" id="player-scrubber" min="0" max="100" value="0" step="0.01"
+                     oninput="handleScrub(this.value)"
+                     class="w-full accent-brand-500 h-1.5 bg-slate-800 rounded-lg cursor-pointer" />
+            </div>
+
+            <!-- Controls -->
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <button onclick="skipAudio(-5)" class="w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs flex items-center justify-center transition-all" title="Back 5s">
+                  <i class="fa-solid fa-rotate-left"></i>
+                </button>
+                <button onclick="toggleAudioPlay()" id="btn-audio-play"
+                        class="w-10 h-10 rounded-xl bg-brand-600 hover:bg-brand-500 text-white flex items-center justify-center shadow-lg shadow-brand-500/25 transition-all text-sm">
+                  <i class="fa-solid fa-play"></i>
+                </button>
+                <button onclick="skipAudio(5)" class="w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs flex items-center justify-center transition-all" title="Forward 5s">
+                  <i class="fa-solid fa-rotate-right"></i>
+                </button>
+                <span class="text-xs text-slate-400 hidden sm:inline font-mono">Space: Play/Pause</span>
+              </div>
+
+              <div class="flex items-center gap-4">
+                <select id="player-speed" onchange="setPlaybackRate(this.value)" class="bg-slate-800 border border-slate-700/60 rounded-lg px-2 py-1 text-xs text-slate-200 font-mono focus:outline-none">
+                  <option value="0.75">0.75x</option>
+                  <option value="1.0" selected>1.0x</option>
+                  <option value="1.25">1.25x</option>
+                  <option value="1.5">1.5x</option>
+                  <option value="2.0">2.0x</option>
+                </select>
+                <div class="hidden sm:flex items-center gap-2">
+                  <i class="fa-solid fa-volume-high text-xs text-slate-400"></i>
+                  <input type="range" id="player-volume" min="0" max="1" step="0.05" value="1" oninput="setAudioVolume(this.value)" class="w-20 accent-brand-500" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Transcript Search -->
+          <div class="flex items-center justify-between gap-4">
+            <div class="relative flex-1 max-w-md">
+              <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+              <input type="text" id="transcript-search" oninput="filterTranscript(this.value)" placeholder="Search transcript..."
+                     class="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-500" />
+            </div>
+            <select id="speaker-filter" onchange="filterBySpeaker(this.value)" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+              <option value="">All Speakers</option>
+            </select>
+          </div>
+
+          <!-- Transcript Karaoke Segments -->
+          <div id="transcript-segments-container" class="space-y-3 pb-24">
+            <!-- Dynamically populated -->
+          </div>
+        </section>
+
+        <!-- ================= VIEW 4: 3D SMART MEDIA CLIPPER STUDIO ================= -->
+        <section id="view-clipper" class="space-y-6 hidden">
+          <!-- Clipper Header -->
+          <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-800/80 pb-4">
+            <div>
+              <button onclick="navigate('dashboard')" class="text-xs font-semibold text-slate-400 hover:text-white flex items-center gap-1.5 mb-1.5 transition-colors">
+                <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
+              </button>
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-rose-600 to-purple-600 flex items-center justify-center text-white text-sm shadow-md shadow-rose-500/20">
+                  <i class="fa-solid fa-scissors"></i>
+                </div>
+                <div>
+                  <h1 class="text-2xl font-extrabold tracking-tight text-white flex items-center gap-2">
+                    <span>3D Media Clipper Studio</span>
+                    <span class="text-xs px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-300 border border-rose-500/30 font-mono font-medium">Universal Audio & Video</span>
+                  </h1>
+                  <p class="text-xs text-slate-400">Frame-accurate trimming, zero-loss fast stream copying, subtitle burning, and instant compression.</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <button onclick="navigate('clips')" class="py-2 px-3.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-slate-700/60 font-semibold text-xs transition-all flex items-center gap-2">
+                <i class="fa-solid fa-film text-cyan-400"></i>
+                <span>Clips Library</span>
+                <span id="clipper-header-clips-count" class="px-1.5 py-0.2 rounded-full text-[10px] bg-cyan-500/20 text-cyan-300">0</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Source Selection Switcher -->
+          <div class="glass-surface p-4">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Source Mode:</span>
+                <div class="inline-flex rounded-xl p-1 bg-slate-950/80 border border-slate-800">
+                  <button type="button" id="btn-clipper-src-upload" onclick="switchClipperSource('upload')"
+                          class="py-1.5 px-3.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-rose-600 to-indigo-600 text-white shadow-sm transition-all flex items-center gap-1.5">
+                    <i class="fa-solid fa-cloud-arrow-up text-[11px]"></i>
+                    <span>Direct Upload</span>
+                  </button>
+                  <button type="button" id="btn-clipper-src-job" onclick="switchClipperSource('job')"
+                          class="py-1.5 px-3.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition-all flex items-center gap-1.5">
+                    <i class="fa-solid fa-file-audio text-[11px]"></i>
+                    <span>From Transcriptions</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Direct Upload Selector -->
+              <div id="clipper-upload-container" class="flex-1 max-w-md w-full">
+                <label for="clipper-file-input" class="cursor-pointer flex items-center justify-between gap-3 px-3.5 py-2 rounded-xl bg-slate-950/60 border border-dashed border-slate-700 hover:border-rose-500/60 transition-colors">
+                  <div class="flex items-center gap-2.5 truncate">
+                    <i class="fa-solid fa-file-video text-rose-400 text-sm"></i>
+                    <span id="clipper-file-label" class="text-xs text-slate-300 truncate">Choose or drop any video/audio file...</span>
+                  </div>
+                  <span class="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono font-medium flex-shrink-0">Browse</span>
+                  <input type="file" id="clipper-file-input" onchange="handleClipperFileChosen(event)" accept="video/*,audio/*" class="hidden" />
+                </label>
+              </div>
+
+              <!-- Job Selector -->
+              <div id="clipper-job-container" class="flex-1 max-w-md w-full hidden">
+                <select id="clipper-job-select" onchange="handleClipperJobChosen(this.value)" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-rose-500">
+                  <option value="">Select a completed transcription job...</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Main Studio Workspace Grid -->
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <!-- LEFT: Media Viewport & Interactive Timeline (7 cols) -->
+            <div class="lg:col-span-7 space-y-4">
+              <div class="glass-surface p-4 space-y-3 relative overflow-hidden">
+                <div class="flex items-center justify-between text-xs text-slate-400 border-b border-slate-800/80 pb-2.5">
+                  <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-rose-400 animate-ping"></span>
+                    <span id="clipper-media-title" class="font-medium text-white truncate max-w-xs">No media loaded</span>
+                  </div>
+                  <span id="clipper-media-format-badge" class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono text-[10px]">Ready</span>
+                </div>
+
+                <!-- Video / Audio Frame -->
+                <div id="clipper-player-frame" class="w-full min-h-[260px] max-h-[400px] rounded-xl bg-black/90 border border-slate-800 flex items-center justify-center relative overflow-hidden">
+                  <video id="clipper-video" class="w-full max-h-[400px] object-contain rounded-xl" playsinline preload="metadata"></video>
+                  <audio id="clipper-audio" class="hidden" preload="metadata"></audio>
+
+                  <!-- Audio-only Visualizer HUD -->
+                  <div id="clipper-audio-hud" class="hidden absolute inset-0 flex flex-col items-center justify-center gap-3 bg-gradient-to-b from-slate-950/60 to-slate-900/90 pointer-events-none">
+                    <div class="flex items-end gap-1.5 h-16">
+                      <div class="soundwave-bar" style="animation-delay: 0.1s;"></div>
+                      <div class="soundwave-bar" style="animation-delay: 0.3s;"></div>
+                      <div class="soundwave-bar" style="animation-delay: 0.5s;"></div>
+                      <div class="soundwave-bar" style="animation-delay: 0.2s;"></div>
+                      <div class="soundwave-bar" style="animation-delay: 0.4s;"></div>
+                      <div class="soundwave-bar" style="animation-delay: 0.6s;"></div>
+                      <div class="soundwave-bar" style="animation-delay: 0.15s;"></div>
+                      <div class="soundwave-bar" style="animation-delay: 0.35s;"></div>
+                    </div>
+                    <span class="text-xs font-mono text-cyan-300 font-semibold tracking-wider uppercase">Audio Stream Active</span>
+                  </div>
+
+                  <div id="clipper-empty-overlay" class="absolute inset-0 flex flex-col items-center justify-center gap-2 text-slate-500 bg-slate-950/90">
+                    <i class="fa-solid fa-film text-3xl text-slate-600 mb-1"></i>
+                    <p class="text-xs">Drag and drop any media file or select a completed job above.</p>
+                  </div>
+                </div>
+
+                <!-- Interactive Visual Timeline Track Container -->
+                <div class="space-y-2 pt-1">
+                  <div class="flex items-center justify-between text-xs font-mono text-slate-400">
+                    <div class="flex items-center gap-1.5">
+                      <span class="text-[11px] text-cyan-400 font-bold uppercase tracking-wider">In:</span>
+                      <span id="clipper-in-display" class="text-white font-semibold mr-1">00:00:00.000</span>
+                      <button type="button" onclick="nudgeClipperIn(-1.0)" class="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-300 font-mono" title="Nudge In -1s">-1s</button>
+                      <button type="button" onclick="nudgeClipperIn(-0.1)" class="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-300 font-mono" title="Nudge In -0.1s">-0.1s</button>
+                      <button type="button" onclick="nudgeClipperIn(0.1)" class="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-300 font-mono" title="Nudge In +0.1s">+0.1s</button>
+                      <button type="button" onclick="nudgeClipperIn(1.0)" class="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-300 font-mono" title="Nudge In +1s">+1s</button>
+                    </div>
+                    <div class="flex items-center gap-2 hidden md:flex">
+                      <span class="text-[11px] text-slate-400 uppercase tracking-wider">Playhead:</span>
+                      <span id="clipper-cur-display" class="text-amber-400 font-semibold">00:00:00.000</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                      <button type="button" onclick="nudgeClipperOut(-1.0)" class="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-300 font-mono" title="Nudge Out -1s">-1s</button>
+                      <button type="button" onclick="nudgeClipperOut(-0.1)" class="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-300 font-mono" title="Nudge Out -0.1s">-0.1s</button>
+                      <button type="button" onclick="nudgeClipperOut(0.1)" class="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-300 font-mono" title="Nudge Out +0.1s">+0.1s</button>
+                      <button type="button" onclick="nudgeClipperOut(1.0)" class="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-300 font-mono" title="Nudge Out +1s">+1s</button>
+                      <span id="clipper-out-display" class="text-white font-semibold ml-1">00:00:00.000</span>
+                      <span class="text-[11px] text-pink-400 font-bold uppercase tracking-wider">Out:</span>
+                    </div>
+                  </div>
+
+                  <!-- The Visual Scrub Track -->
+                  <div id="clipper-timeline-track" class="timeline-track-container" onclick="handleTimelineTrackClick(event)">
+                    <canvas id="clipper-waveform-canvas" class="timeline-waveform-canvas"></canvas>
+                    <div id="clipper-region" class="timeline-clip-region" style="left: 0%; width: 100%;"></div>
+                    <div id="clipper-marker-in" class="timeline-marker-in" title="Drag Start In Point" style="left: 0%;"></div>
+                    <div id="clipper-marker-out" class="timeline-marker-out" title="Drag End Out Point" style="left: 100%;"></div>
+                    <div id="clipper-playhead" class="timeline-playhead" style="left: 0%;"></div>
+                  </div>
+
+                  <!-- Range Duration Pill & Quick Duration Presets -->
+                  <div class="flex flex-wrap items-center justify-between text-xs gap-2">
+                    <div class="flex items-center gap-2">
+                      <span class="text-slate-400">Duration: <strong id="clipper-dur-display" class="text-white font-mono font-bold">0.0s</strong></span>
+                      <span id="clipper-dur-percent" class="px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-300 font-mono text-[10px] border border-indigo-500/20">100% of media</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 font-mono text-[10px]">
+                      <span class="text-slate-500 mr-1">Presets:</span>
+                      <button type="button" onclick="setClipPresetDuration(15)" class="px-2 py-0.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors" title="Trim to 15s">15s</button>
+                      <button type="button" onclick="setClipPresetDuration(30)" class="px-2 py-0.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors" title="Trim to 30s">30s</button>
+                      <button type="button" onclick="setClipPresetDuration(60)" class="px-2 py-0.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors" title="Trim to 60s">60s</button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Frame & Jog Transport Controls -->
+                <div class="pt-2 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-3">
+                  <div class="flex items-center gap-1.5">
+                    <button type="button" onclick="jogClipper(-5)" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs flex items-center justify-center transition-all" title="Back 5s">
+                      -5s
+                    </button>
+                    <button type="button" onclick="jogClipper(-1)" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs flex items-center justify-center transition-all" title="Back 1s">
+                      -1s
+                    </button>
+                    <button type="button" onclick="stepClipperFrame(-1)" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-400 text-xs flex items-center justify-center transition-all" title="Step Back 1 Frame">
+                      <i class="fa-solid fa-backward-step"></i>
+                    </button>
+                    <button type="button" onclick="toggleClipperPlay()" id="btn-clipper-play"
+                            class="w-10 h-10 rounded-xl bg-gradient-to-r from-rose-600 to-indigo-600 hover:from-rose-500 hover:to-indigo-500 text-white flex items-center justify-center shadow-lg shadow-rose-500/20 text-sm transition-all">
+                      <i class="fa-solid fa-play"></i>
+                    </button>
+                    <button type="button" onclick="stepClipperFrame(1)" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-400 text-xs flex items-center justify-center transition-all" title="Step Forward 1 Frame">
+                      <i class="fa-solid fa-forward-step"></i>
+                    </button>
+                    <button type="button" onclick="jogClipper(1)" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs flex items-center justify-center transition-all" title="Forward 1s">
+                      +1s
+                    </button>
+                    <button type="button" onclick="jogClipper(5)" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs flex items-center justify-center transition-all" title="Forward 5s">
+                      +5s
+                    </button>
+                  </div>
+
+                  <!-- In/Out Set Buttons -->
+                  <div class="flex items-center gap-1.5">
+                    <button type="button" onclick="setClipperInCurrent()" class="py-1.5 px-3 rounded-lg bg-cyan-950/60 hover:bg-cyan-900 border border-cyan-600/40 text-cyan-300 text-xs font-semibold flex items-center gap-1 transition-all" title="Set IN point at current playhead">
+                      <span>[ Set In (I)</span>
+                    </button>
+                    <button type="button" onclick="setClipperOutCurrent()" class="py-1.5 px-3 rounded-lg bg-pink-950/60 hover:bg-pink-900 border border-pink-600/40 text-pink-300 text-xs font-semibold flex items-center gap-1 transition-all" title="Set OUT point at current playhead">
+                      <span>Set Out (O) ]</span>
+                    </button>
+                    <button type="button" onclick="toggleClipperLoop()" id="btn-clipper-loop" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition-all" title="Loop Clip Range">
+                      <i class="fa-solid fa-repeat"></i>
+                    </button>
+                    <button type="button" onclick="resetClipperFullRange()" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition-all" title="Reset Range to Full Media">
+                      <i class="fa-solid fa-arrows-left-right"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- RIGHT: Engine Mode, Format, Subtitles & Compression HUD (5 cols) -->
+            <div class="lg:col-span-5 space-y-4">
+              <div class="glass-surface p-5 space-y-5">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-300 mb-1.5">Clip Title / Name</label>
+                  <input type="text" id="clipper-title-input" placeholder="e.g. Viral Podcast Highlight #1"
+                         class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 transition-colors font-medium" />
+                </div>
+
+                <!-- Clipping Engine Mode -->
+                <div>
+                  <label class="block text-xs font-semibold text-slate-300 mb-2">Clipping Precision Mode</label>
+                  <div class="grid grid-cols-2 gap-2.5">
+                    <label class="cursor-pointer">
+                      <input type="radio" name="clipper-engine-mode" value="exact" checked class="peer hidden" onchange="handleClipperModeChange('exact')" />
+                      <div class="p-3 rounded-xl border border-slate-800 peer-checked:border-rose-500 peer-checked:bg-rose-950/30 bg-slate-950/50 transition-all flex flex-col gap-1">
+                        <div class="flex items-center justify-between">
+                          <span class="text-xs font-bold text-white flex items-center gap-1.5">
+                            <i class="fa-solid fa-bullseye text-rose-400"></i>
+                            <span>Smart Exact</span>
+                          </span>
+                          <span class="text-[9px] px-1.5 py-0.2 rounded bg-rose-500/20 text-rose-300 font-mono">CRF 18</span>
+                        </div>
+                        <p class="text-[11px] text-slate-400">Frame-accurate keyframe cut with subtitle burning & compression.</p>
+                      </div>
+                    </label>
+
+                    <label class="cursor-pointer">
+                      <input type="radio" name="clipper-engine-mode" value="fast" class="peer hidden" onchange="handleClipperModeChange('fast')" />
+                      <div class="p-3 rounded-xl border border-slate-800 peer-checked:border-cyan-500 peer-checked:bg-cyan-950/30 bg-slate-950/50 transition-all flex flex-col gap-1">
+                        <div class="flex items-center justify-between">
+                          <span class="text-xs font-bold text-white flex items-center gap-1.5">
+                            <i class="fa-solid fa-bolt text-cyan-400"></i>
+                            <span>Fast Copy</span>
+                          </span>
+                          <span class="text-[9px] px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-300 font-mono">0ms Cut</span>
+                        </div>
+                        <p class="text-[11px] text-slate-400">Stream copy in &lt;0.2s without re-encoding. 100% original quality.</p>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
+                <!-- Container Format Selector -->
+                <div>
+                  <label class="block text-xs font-semibold text-slate-300 mb-1.5">Target Container Format</label>
+                  <select id="clipper-target-format" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-rose-500">
+                    <option value="">Keep Original Format (Auto)</option>
+                    <optgroup label="Video Formats">
+                      <option value="mp4">MP4 (H.264 / AAC Universal)</option>
+                      <option value="mkv">MKV (Matroska Multi-Track)</option>
+                      <option value="webm">WebM (VP9 / Web Optimized)</option>
+                      <option value="gif">GIF (Animated Loop)</option>
+                    </optgroup>
+                    <optgroup label="Audio Formats">
+                      <option value="mp3">MP3 (192kbps High Quality)</option>
+                      <option value="wav">WAV (Lossless 24-bit PCM)</option>
+                      <option value="aac">AAC (Advanced Audio Codec)</option>
+                      <option value="m4a">M4A (Apple Audio)</option>
+                    </optgroup>
+                  </select>
+                </div>
+
+                <!-- Subtitle Burning Options -->
+                <div id="clipper-subtitles-card" class="space-y-3 p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/80">
+                  <div class="flex items-center justify-between">
                     <div>
-                      <label class="block text-xs font-semibold text-slate-400 mb-1">Min Speakers (Optional)</label>
-                      <input type="number" id="config-min-speakers" min="1" max="20" placeholder="e.g. 2"
-                             class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500" />
+                      <span class="text-xs font-semibold text-white block">Burn Subtitles into Video</span>
+                      <span class="text-[11px] text-slate-400">Hardcode synchronized speech captions</span>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                      <input type="checkbox" id="clipper-burn-subtitles" class="sr-only peer" />
+                      <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-rose-600"></div>
+                    </label>
+                  </div>
+                </div>
+
+                <!-- Real-time Compression & Size Reduction HUD -->
+                <div class="p-3.5 rounded-xl bg-gradient-to-br from-indigo-950/40 via-purple-950/20 to-slate-950/60 border border-indigo-500/30 space-y-2">
+                  <div class="flex items-center justify-between text-xs">
+                    <span class="text-slate-400 font-semibold uppercase tracking-wider text-[10px]">Real-Time Compression Engine</span>
+                    <span id="clipper-reduction-badge" class="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-mono text-[10px] font-bold border border-emerald-500/30">
+                      ⚡ 0% Reduced
+                    </span>
+                  </div>
+                  <div class="grid grid-cols-2 gap-2 text-xs font-mono">
+                    <div>
+                      <span class="text-slate-500 block text-[10px]">Source Media Size:</span>
+                      <span id="clipper-source-size-text" class="text-slate-300 font-bold">--</span>
                     </div>
                     <div>
-                      <label class="block text-xs font-semibold text-slate-400 mb-1">Max Speakers (Optional)</label>
-                      <input type="number" id="config-max-speakers" min="1" max="20" placeholder="e.g. 4"
-                             class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500" />
+                      <span class="text-slate-500 block text-[10px]">Est. Clip File Size:</span>
+                      <span id="clipper-est-size-text" class="text-cyan-400 font-bold">--</span>
                     </div>
+                  </div>
+                </div>
+
+                <!-- Render Button -->
+                <button type="button" onclick="executeRenderClip()" id="btn-render-clip"
+                        class="w-full py-3 px-5 rounded-xl bg-gradient-to-r from-rose-600 via-pink-600 to-purple-600 hover:from-rose-500 hover:to-purple-500 text-white font-bold text-sm shadow-xl shadow-rose-600/25 transition-all flex items-center justify-center gap-2 group">
+                  <i class="fa-solid fa-scissors group-hover:rotate-12 transition-transform"></i>
+                  <span>Render & Export Clip</span>
+                </button>
+
+                <!-- Render Progress Indicator -->
+                <div id="clipper-render-indicator" class="hidden space-y-2 p-3 rounded-xl bg-slate-950 border border-rose-500/40">
+                  <div class="flex items-center justify-between text-xs text-rose-300">
+                    <span class="flex items-center gap-2">
+                      <i class="fa-solid fa-spinner fa-spin"></i>
+                      <span id="clipper-render-msg">Extracting media clip...</span>
+                    </span>
+                    <span class="font-mono">Processing</span>
+                  </div>
+                  <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                    <div class="h-full bg-gradient-to-r from-rose-500 to-indigo-500 animate-pulse w-full"></div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <!-- Submit Button -->
-        <button type="submit" id="btn-submit-transcription"
-                class="w-full py-3.5 px-6 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-bold text-base shadow-xl shadow-brand-500/25 transition-all flex items-center justify-center gap-2">
-          <i class="fa-solid fa-play"></i>
-          <span>Launch Transcription Pipeline</span>
-        </button>
-      </form>
-    </section>
+          <!-- Exported Clip Action Dock -->
+          <div id="clipper-export-dock" class="hidden glass-surface p-5 space-y-4 border-rose-500/40 shadow-2xl">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-800/80 pb-3">
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm">
+                  <i class="fa-solid fa-circle-check"></i>
+                </div>
+                <div>
+                  <h3 id="dock-clip-title" class="text-sm font-bold text-white">Clip Rendered Successfully!</h3>
+                  <p id="dock-clip-meta" class="text-xs text-slate-400 font-mono">00:15.00 • 4.2 MB • Exact Cut</p>
+                </div>
+              </div>
 
-    <!-- ================= VIEW 3: TRANSCRIPT & AUDIO EDITOR STUDIO ================= -->
-    <section id="view-editor" class="space-y-6 hidden">
-      <!-- Editor Header -->
-      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
-        <div>
-          <button onclick="navigate('dashboard')" class="text-xs font-semibold text-slate-400 hover:text-white flex items-center gap-1.5 mb-1.5 transition-colors">
-            <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
-          </button>
-          <div class="flex items-center gap-3">
-            <h1 id="editor-job-title" class="text-2xl font-bold tracking-tight text-white">Audio Transcript</h1>
-            <span id="editor-job-status-badge" class="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">Completed</span>
+              <div class="flex items-center gap-2 flex-wrap">
+                <a id="dock-btn-download" href="#" download class="py-2 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs shadow-md transition-all flex items-center gap-1.5">
+                  <i class="fa-solid fa-download"></i>
+                  <span>Download Media</span>
+                </a>
+                <a id="dock-btn-subtitles" href="#" download class="hidden py-2 px-3.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold transition-all flex items-center gap-1.5">
+                  <i class="fa-regular fa-closed-captioning text-brand-400"></i>
+                  <span>Download Subtitles (.srt)</span>
+                </a>
+                <button type="button" onclick="copyDockStreamUrl()" class="py-2 px-3.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold transition-all flex items-center gap-1.5">
+                  <i class="fa-solid fa-link text-cyan-400"></i>
+                  <span>Copy URL</span>
+                </button>
+                <button type="button" onclick="navigate('clips')" class="py-2 px-3.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold transition-all flex items-center gap-1.5">
+                  <i class="fa-solid fa-film text-rose-400"></i>
+                  <span>Open in Library</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Preview Player -->
+            <div class="rounded-xl overflow-hidden bg-black/80 max-h-72 flex items-center justify-center">
+              <video id="dock-preview-video" controls class="max-h-72 w-full object-contain"></video>
+            </div>
           </div>
-        </div>
+        </section>
 
-        <!-- Export Dropdown & Save Edits -->
-        <div class="flex items-center gap-2 flex-wrap">
-          <button onclick="saveTranscriptEdits()" id="btn-save-edits"
-                  class="py-2 px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs shadow-md transition-all flex items-center gap-1.5">
-            <i class="fa-solid fa-floppy-disk"></i>
-            <span>Save Changes</span>
-          </button>
-          <div class="relative inline-block text-left" id="export-dropdown-container">
-            <button onclick="toggleExportMenu()"
-                    class="py-2 px-3.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-semibold text-xs transition-all flex items-center gap-1.5">
-              <i class="fa-solid fa-download"></i>
-              <span>Export</span>
-              <i class="fa-solid fa-caret-down text-[10px]"></i>
-            </button>
-            <div id="export-menu" class="hidden absolute right-0 mt-2 w-44 rounded-xl bg-slate-900 border border-slate-800 shadow-2xl py-1.5 z-30">
-              <button onclick="downloadExport('srt')" class="w-full text-left px-4 py-2 text-xs text-slate-300 hover:bg-slate-800 flex items-center gap-2">
-                <i class="fa-regular fa-closed-captioning text-brand-400"></i> SRT Subtitles (.srt)
+        <!-- ================= VIEW 5: CLIPS LIBRARY ================= -->
+        <section id="view-clips" class="space-y-6 hidden">
+          <!-- Library Header -->
+          <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-800/80 pb-4">
+            <div>
+              <button onclick="navigate('dashboard')" class="text-xs font-semibold text-slate-400 hover:text-white flex items-center gap-1.5 mb-1.5 transition-colors">
+                <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
               </button>
-              <button onclick="downloadExport('vtt')" class="w-full text-left px-4 py-2 text-xs text-slate-300 hover:bg-slate-800 flex items-center gap-2">
-                <i class="fa-solid fa-file-lines text-indigo-400"></i> WebVTT (.vtt)
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-cyan-600 to-indigo-600 flex items-center justify-center text-white text-sm shadow-md shadow-cyan-500/20">
+                  <i class="fa-solid fa-film"></i>
+                </div>
+                <div>
+                  <h1 class="text-2xl font-extrabold tracking-tight text-white">Clips Library</h1>
+                  <p class="text-xs text-slate-400">All clipped audio and video media rendered across your projects.</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <button onclick="navigate('clipper')" class="py-2 px-4 rounded-xl bg-gradient-to-r from-rose-600 to-purple-600 hover:from-rose-500 hover:to-purple-500 text-white font-semibold text-xs shadow-md transition-all flex items-center gap-1.5">
+                <i class="fa-solid fa-scissors"></i>
+                <span>Create New Clip</span>
               </button>
-              <button onclick="downloadExport('json')" class="w-full text-left px-4 py-2 text-xs text-slate-300 hover:bg-slate-800 flex items-center gap-2">
-                <i class="fa-solid fa-code text-amber-400"></i> JSON Payload (.json)
-              </button>
-              <button onclick="downloadExport('txt')" class="w-full text-left px-4 py-2 text-xs text-slate-300 hover:bg-slate-800 flex items-center gap-2">
-                <i class="fa-solid fa-align-left text-emerald-400"></i> Plain Text (.txt)
-              </button>
-              <button onclick="downloadExport('tsv')" class="w-full text-left px-4 py-2 text-xs text-slate-300 hover:bg-slate-800 flex items-center gap-2">
-                <i class="fa-solid fa-table text-cyan-400"></i> Tab Separated (.tsv)
+              <button onclick="loadAllClips()" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition-colors" title="Refresh">
+                <i class="fa-solid fa-rotate-right"></i>
               </button>
             </div>
           </div>
-        </div>
-      </div>
 
-      <!-- Live Job Progress Banner (Shown while running) -->
-      <div id="editor-progress-card" class="bg-brand-950/30 border border-brand-500/30 rounded-2xl p-5 space-y-3 hidden">
-        <div class="flex items-center justify-between text-xs">
-          <div class="flex items-center gap-2 text-brand-300 font-semibold">
-            <i class="fa-solid fa-spinner fa-spin"></i>
-            <span id="editor-progress-step">Transcribing audio with faster-whisper...</span>
-          </div>
-          <span id="editor-progress-pct" class="font-mono font-bold text-brand-400">45%</span>
-        </div>
-        <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
-          <div id="editor-progress-bar" class="h-full bg-gradient-to-r from-brand-600 to-indigo-500 rounded-full transition-all duration-300" style="width: 45%;"></div>
-        </div>
-      </div>
+          <!-- Filter Bar -->
+          <div class="flex items-center justify-between gap-4 flex-wrap">
+            <div class="inline-flex rounded-xl p-1 bg-slate-900 border border-slate-800 text-xs">
+              <button type="button" onclick="filterClipsLibrary('all')" id="filter-clip-all" class="py-1.5 px-3 rounded-lg bg-indigo-600 text-white font-medium">All Clips</button>
+              <button type="button" onclick="filterClipsLibrary('video')" id="filter-clip-video" class="py-1.5 px-3 rounded-lg text-slate-400 hover:text-white font-medium">Video Only</button>
+              <button type="button" onclick="filterClipsLibrary('audio')" id="filter-clip-audio" class="py-1.5 px-3 rounded-lg text-slate-400 hover:text-white font-medium">Audio Only</button>
+            </div>
 
-      <!-- Sticky Audio/Video Player Deck -->
-      <div class="bg-slate-900/90 backdrop-blur-md border border-slate-800/80 rounded-2xl p-4 shadow-2xl sticky top-[68px] z-30 space-y-3">
-        <!-- Video Viewport (auto-shown if video file) -->
-        <div id="video-viewport" class="hidden w-full max-h-80 rounded-xl bg-black border border-slate-800 flex items-center justify-center overflow-hidden relative">
-          <video id="video-player" class="max-h-80 w-full object-contain" preload="metadata"></video>
-        </div>
-        <audio id="audio-player" class="hidden" preload="metadata"></audio>
+            <div class="relative flex-1 max-w-xs">
+              <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+              <input type="text" id="clips-search-input" oninput="handleClipsSearch(this.value)" placeholder="Search clips by title..."
+                     class="w-full bg-slate-900 border border-slate-800 rounded-xl pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition-colors" />
+            </div>
 
-        <!-- Timeline scrubber -->
-        <div class="space-y-1">
-          <div class="flex items-center justify-between text-xs font-mono text-slate-400">
-            <span id="player-current-time">00:00.00</span>
-            <span id="player-total-time">00:00.00</span>
-          </div>
-          <input type="range" id="player-scrubber" min="0" max="100" value="0" step="0.01"
-                 oninput="handleScrub(this.value)"
-                 class="w-full accent-brand-500 h-1.5 bg-slate-800 rounded-lg cursor-pointer" />
-        </div>
-
-        <!-- Controls Row -->
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-3">
-            <button onclick="skipAudio(-5)" class="w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs flex items-center justify-center transition-all" title="Back 5s">
-              <i class="fa-solid fa-rotate-left"></i>
-            </button>
-            <button onclick="toggleAudioPlay()" id="btn-audio-play"
-                    class="w-10 h-10 rounded-xl bg-brand-600 hover:bg-brand-500 text-white flex items-center justify-center shadow-lg shadow-brand-500/25 transition-all text-sm">
-              <i class="fa-solid fa-play"></i>
-            </button>
-            <button onclick="skipAudio(5)" class="w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs flex items-center justify-center transition-all" title="Forward 5s">
-              <i class="fa-solid fa-rotate-right"></i>
-            </button>
-            <span class="text-xs text-slate-400 hidden sm:inline font-mono">Space: Play/Pause</span>
+            <span id="clips-library-count-text" class="text-xs text-slate-400 font-mono">0 media clips found</span>
           </div>
 
-          <div class="flex items-center gap-4">
-            <!-- Playback Rate -->
-            <select id="player-speed" onchange="setPlaybackRate(this.value)" class="bg-slate-800 border border-slate-700/60 rounded-lg px-2 py-1 text-xs text-slate-200 font-mono focus:outline-none">
-              <option value="0.75">0.75x</option>
-              <option value="1.0" selected>1.0x</option>
-              <option value="1.25">1.25x</option>
-              <option value="1.5">1.5x</option>
-              <option value="2.0">2.0x</option>
-            </select>
-
-            <!-- Volume -->
-            <div class="hidden sm:flex items-center gap-2">
-              <i class="fa-solid fa-volume-high text-xs text-slate-400"></i>
-              <input type="range" id="player-volume" min="0" max="1" step="0.05" value="1" oninput="setAudioVolume(this.value)" class="w-20 accent-brand-500" />
+          <!-- Clips Grid -->
+          <div id="clips-library-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div class="col-span-full py-16 text-center text-slate-500 glass-surface">
+              <i class="fa-solid fa-scissors text-3xl mb-3 block text-slate-600"></i>
+              <p class="text-sm font-medium text-slate-400">No clips in your library yet.</p>
+              <p class="text-xs text-slate-500 mt-1">Open the <button onclick="navigate('clipper')" class="text-rose-400 underline font-semibold">3D Clipper Studio</button> to create a clip.</p>
             </div>
           </div>
-        </div>
-      </div>
+        </section>
 
-      <!-- Transcript Search & Filter -->
-      <div class="flex items-center justify-between gap-4">
-        <div class="relative flex-1 max-w-md">
-          <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
-          <input type="text" id="transcript-search" oninput="filterTranscript(this.value)" placeholder="Search transcript..."
-                 class="w-full bg-slate-900/60 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-500" />
-        </div>
-        <div class="flex items-center gap-2 text-xs text-slate-400">
-          <i class="fa-solid fa-hand-pointer text-brand-400"></i>
-          <span>Click any word to jump audio playback</span>
-        </div>
-      </div>
-
-      <!-- Transcript Segments Container (Word-Level Karaoke) -->
-      <div id="transcript-segments-container" class="space-y-3 pb-24">
-        <!-- Rendered dynamically -->
-      </div>
-    </section>
-
-    <!-- ================= VIEW 4: SETTINGS ================= -->
-    <section id="view-settings" class="max-w-3xl mx-auto space-y-6 hidden">
-      <div class="border-b border-slate-800 pb-4">
-        <button onclick="navigate('dashboard')" class="text-xs font-semibold text-slate-400 hover:text-white flex items-center gap-1.5 mb-2 transition-colors">
-          <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
-        </button>
-        <h1 class="text-2xl font-bold tracking-tight text-white">System & User Settings</h1>
-        <p class="text-sm text-slate-400">Configure global preferences, default credentials, and inspect hardware accelerators.</p>
-      </div>
-
-      <!-- User Preferences Form -->
-      <form onsubmit="handleSaveSettings(event)" class="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-6 shadow-xl space-y-5">
-        <h2 class="text-base font-bold text-white mb-2">Default Transcription Parameters</h2>
-
-        <div>
-          <label class="block text-xs font-semibold text-slate-300 mb-1.5">Hugging Face User Access Token</label>
-          <input type="password" id="settings-hf-token" placeholder="hf_xxxxxxxxxxxxxxxxxxxxxxx"
-                 class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-brand-500 font-mono" />
-          <p class="text-xs text-slate-500 mt-1">Saved securely in your database user profile to power Pyannote diarization without entering it every time.</p>
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div>
-            <label class="block text-xs font-semibold text-slate-300 mb-1.5">Default Model</label>
-            <select id="settings-default-model" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500">
-              <option value="tiny">Tiny</option>
-              <option value="base">Base</option>
-              <option value="small">Small</option>
-              <option value="medium">Medium</option>
-              <option value="large-v2">Large-v2</option>
-              <option value="large-v3">Large-v3</option>
-            </select>
+        <!-- ================= VIEW 6: SETTINGS & HARDWARE DIAGNOSTICS ================= -->
+        <section id="view-settings" class="max-w-3xl mx-auto space-y-6 hidden">
+          <div class="border-b border-slate-800 pb-4">
+            <button onclick="navigate('dashboard')" class="text-xs font-semibold text-slate-400 hover:text-white flex items-center gap-1.5 mb-2 transition-colors">
+              <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
+            </button>
+            <h1 class="text-2xl font-extrabold tracking-tight text-white">System & Hardware Diagnostics</h1>
+            <p class="text-sm text-slate-400">Configure global preferences, default credentials, and inspect hardware accelerators.</p>
           </div>
 
-          <div>
-            <label class="block text-xs font-semibold text-slate-300 mb-1.5">Default Device</label>
-            <select id="settings-default-device" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500">
-              <option value="cuda">CUDA (GPU)</option>
-              <option value="cpu">CPU</option>
-            </select>
-          </div>
+          <!-- User Preferences Form -->
+          <form onsubmit="handleSaveSettings(event)" class="glass-surface p-6 shadow-xl space-y-5">
+            <h2 class="text-sm font-bold text-white mb-2">Default Transcription Parameters</h2>
+            <div class="space-y-4 text-xs">
+              <div>
+                <label class="block font-semibold text-slate-300 mb-1.5">Hugging Face User Access Token</label>
+                <div class="relative">
+                  <i class="fa-solid fa-key absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                  <input type="password" id="settings-hf-token" placeholder="hf_••••••••"
+                         class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-white font-mono placeholder-slate-500 focus:outline-none focus:border-brand-500" />
+                </div>
+              </div>
 
-          <div>
-            <label class="block text-xs font-semibold text-slate-300 mb-1.5">Default Precision</label>
-            <select id="settings-default-compute" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500">
-              <option value="float16">float16</option>
-              <option value="int8">int8</option>
-              <option value="float32">float32</option>
-            </select>
-          </div>
-        </div>
+              <div>
+                <label class="block font-semibold text-slate-300 mb-1.5">Default Whisper ASR Model</label>
+                <select id="settings-default-model" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-brand-500">
+                  <option value="tiny">tiny (Fastest)</option>
+                  <option value="base" selected>base (Default)</option>
+                  <option value="small">small (Balanced)</option>
+                  <option value="medium">medium (Accurate)</option>
+                  <option value="large-v3">large-v3 (Maximum Accuracy)</option>
+                </select>
+              </div>
+            </div>
 
-        <div class="pt-3">
-          <button type="submit" class="py-2.5 px-5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold text-sm shadow-md transition-all">
-            Save Preferences
-          </button>
-        </div>
-      </form>
+            <button type="submit" id="btn-save-settings"
+                    class="py-2.5 px-5 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-semibold text-xs shadow-md shadow-brand-500/20 transition-all flex items-center gap-2">
+              <i class="fa-solid fa-floppy-disk"></i>
+              <span>Save System Settings</span>
+            </button>
+          </form>
 
-      <!-- System Environment Card -->
-      <div class="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-6 shadow-xl space-y-4">
-        <h2 class="text-base font-bold text-white mb-2">Hardware & Engine Diagnostics</h2>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono">
-          <div class="p-3 rounded-xl bg-slate-950 border border-slate-800">
-            <span class="text-slate-500 block mb-1">CUDA Status:</span>
-            <span id="diag-cuda" class="text-emerald-400 font-bold">Checking...</span>
+          <!-- System Hardware Diagnostics Card -->
+          <div class="glass-surface p-6 shadow-xl space-y-4">
+            <h2 class="text-sm font-bold text-white mb-2">Hardware Accelerator Diagnostics</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono">
+              <div class="p-3.5 rounded-xl bg-slate-950 border border-slate-800">
+                <span class="text-slate-500 block mb-1">NVIDIA CUDA Status:</span>
+                <span id="diag-cuda" class="text-emerald-400 font-bold">Checking...</span>
+              </div>
+              <div class="p-3.5 rounded-xl bg-slate-950 border border-slate-800">
+                <span class="text-slate-500 block mb-1">GPU Accelerator:</span>
+                <span id="diag-gpu" class="text-slate-200 font-bold">Checking...</span>
+              </div>
+            </div>
           </div>
-          <div class="p-3 rounded-xl bg-slate-950 border border-slate-800">
-            <span class="text-slate-500 block mb-1">GPU Accelerator:</span>
-            <span id="diag-gpu" class="text-slate-200">Checking...</span>
-          </div>
-        </div>
-      </div>
-    </section>
+        </section>
 
-  </main>
+      </main>
+    </div>
+  </div>
 
   <script src="/app.js"></script>
 </body>

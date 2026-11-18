@@ -9,7 +9,13 @@ import traceback
 from datetime import datetime
 from typing import Dict, Any, Optional
 
-import torch
+try:
+    import torch
+    TORCH_AVAILABLE = True
+except ImportError:
+    torch = None
+    TORCH_AVAILABLE = False
+
 from sqlalchemy.orm import Session
 from .database import SessionLocal, TranscriptionJob
 
@@ -89,7 +95,7 @@ def process_transcription_job(job_id: str):
     db.close()
 
     model_name = options.get("model_size", "base")
-    device = options.get("device", "cuda" if torch.cuda.is_available() else "cpu")
+    device = options.get("device", "cuda" if (torch and torch.cuda.is_available()) else "cpu")
     compute_type = options.get("compute_type", "float16" if device == "cuda" else "int8")
     batch_size = int(options.get("batch_size", 16 if device == "cuda" else 4))
     language = options.get("language")
@@ -152,7 +158,7 @@ def process_transcription_job(job_id: str):
         # Free Whisper GPU memory before next steps
         del model
         gc.collect()
-        if torch.cuda.is_available():
+        if torch and torch.cuda.is_available():
             torch.cuda.empty_cache()
 
         update_job_status(job_id, current_step="transcription_done", progress=55.0)
@@ -187,7 +193,7 @@ def process_transcription_job(job_id: str):
 
                 del align_model
                 gc.collect()
-                if torch.cuda.is_available():
+                if torch and torch.cuda.is_available():
                     torch.cuda.empty_cache()
 
                 update_job_status(job_id, current_step="alignment_done", progress=75.0)
@@ -221,7 +227,7 @@ def process_transcription_job(job_id: str):
 
                 del diarize_model
                 gc.collect()
-                if torch.cuda.is_available():
+                if torch and torch.cuda.is_available():
                     torch.cuda.empty_cache()
 
                 update_job_status(job_id, current_step="diarization_done", progress=95.0)

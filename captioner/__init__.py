@@ -55,3 +55,22 @@ def get_logger(*args, **kwargs):
     """
     logging_module = _lazy_import("log_utils")
     return logging_module.get_logger(*args, **kwargs)
+
+
+def clip_media(*args, **kwargs):
+    """Clip audio or video file with frame accuracy and optional subtitle burning."""
+    clipper_module = _lazy_import("clipper")
+    return clipper_module.clip_media(*args, **kwargs)
+
+
+def probe_media(*args, **kwargs):
+    """Probe audio or video file using ffprobe."""
+    clipper_module = _lazy_import("clipper")
+    return clipper_module.probe_media(*args, **kwargs)
+
+
+def slice_transcript(*args, **kwargs):
+    """Slice transcript and word timestamps to fit within a time range."""
+    clipper_module = _lazy_import("clipper")
+    return clipper_module.slice_transcript(*args, **kwargs)
+

@@ -1,0 +1,30 @@
+services:
+  captioner-studio:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: captioner-studio
+    ports:
+      - "8080:8080"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8080
+      - HF_TOKEN=${HF_TOKEN:-}
+    volumes:
+      # Persistent SQLite database, uploaded media, rendered clips, backend code & static assets
+      - ./web:/app/web
+      # Cache downloaded HuggingFace models & faster-whisper weights across container restarts
+      - captioner-cache:/root/.cache
+    restart: unless-stopped
+    # Uncomment the following block if using an NVIDIA GPU with the NVIDIA Container Toolkit:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+volumes:
+  captioner-cache:
+    driver: local

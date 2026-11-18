@@ -37,6 +37,7 @@ web = [
 [project.scripts]
 captioner = "captioner.__main__:cli"
 whisperx = "captioner.__main__:cli"
+captioner-clip = "captioner.clipper:cli_main"
 
 [build-system]
 requires = ["setuptools"]

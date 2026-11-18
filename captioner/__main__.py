@@ -78,6 +78,13 @@ def cli():
 
     parser.add_argument("--print_progress", type=str2bool, default = False, help = "if True, progress will be printed in transcribe() and align() methods.")
     parser.add_argument("--interleaved_context", action="store_true", help="Enable interleaved context: re-run the first batch of streams with wrap-around context")
+
+    # Clipping arguments
+    parser.add_argument("--clip_start", default=None, type=str, help="Start time to clip output media (e.g. 10.5 or 00:01:23.5)")
+    parser.add_argument("--clip_end", default=None, type=str, help="End time to clip output media (e.g. 35.0 or 00:02:00)")
+    parser.add_argument("--clip_burn_subtitles", action="store_true", help="Burn generated subtitles directly into the clipped video")
+    parser.add_argument("--clip_format", default=None, type=str, help="Target format for output clip (mp4, webm, mp3, wav, etc.)")
+
     parser.add_argument("--version", "-V", action="version", version=f"%(prog)s {importlib.metadata.version('captioner')}",help="Show whisperx version information and exit")
     parser.add_argument("--python-version", "-P", action="version", version=f"Python {platform.python_version()} ({platform.python_implementation()})",help="Show python version information and exit")
     # fmt: on

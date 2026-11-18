@@ -5,7 +5,7 @@ import base64
 import json
 import time
 from typing import Optional, Dict, Any
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from .database import get_db, User
@@ -84,17 +84,22 @@ def decode_access_token(token: str) -> Optional[Dict[str, Any]]:
         return None
 
 
-def get_current_user(token: Optional[str] = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
-    """FastAPI dependency to extract current authenticated user."""
+def get_current_user(
+    request: Request,
+    token: Optional[str] = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+) -> User:
+    """FastAPI dependency to extract current authenticated user (supports Header or ?token= query)."""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials or session expired",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    if not token:
+    actual_token = token or request.query_params.get("token")
+    if not actual_token:
         raise credentials_exception
 
-    payload = decode_access_token(token)
+    payload = decode_access_token(actual_token)
     if payload is None:
         raise credentials_exception
 

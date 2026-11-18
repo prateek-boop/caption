@@ -8,11 +8,40 @@ Captioner is an accelerated speech-to-text pipeline that provides real-time tran
 - 🎯 **Accurate Word-Level Timestamps**: Forced phoneme alignment using wav2vec2 CTC acoustic emissions.
 - 👯‍♂️ **Speaker Diarization**: Multi-speaker labeling and attribution powered by Pyannote Audio.
 - 🗣️ **VAD Preprocessing**: Voice Activity Detection strips silence and prevents hallucinations.
-- 🎙️ **Interactive Web Studio**: Full-stack web application with user authentication, SQLite database, audio waveform playback, real-time word karaoke highlighting, and subtitle export (SRT, VTT, JSON, TXT, TSV).
+- ✂️ **Universal Media Clipper**: Frame-accurate audio/video clipping tool supporting all media formats, stream copy, exact re-encoding (0 glitches), burning subtitles directly into video, and sliced transcript generation.
+- 🎙️ **Interactive Web Studio**: Full-stack web application with user authentication, SQLite database, audio waveform playback, real-time word karaoke highlighting, in-browser clip creator, and subtitle export (SRT, VTT, JSON, TXT, TSV).
 
 ---
 
-## Web Studio UI
+## 🐳 Docker Quickstart (Single Command)
+
+You can launch the entire Captioner Studio and 3D Media Clipper suite using a single command:
+
+```bash
+docker compose up --build -d
+```
+
+Or run the automated launcher script:
+```bash
+./run_docker.sh
+```
+
+- **Web Interface**: `http://localhost:8080`
+- **Interactive API Docs**: `http://localhost:8080/docs`
+- **Container Features**:
+  - Automatically installs system FFmpeg, libsndfile, and uv-optimized Python environment.
+  - Persistent volume storage for `./web/data` (database, media uploads, and exported clips).
+  - Model weights cache volume (`captioner-cache`) prevents re-downloading Whisper/Pyannote models across container restarts.
+  - Built-in container healthchecks via `/api/system/info`.
+  - Seamless CPU execution or NVIDIA GPU acceleration via `nvidia-container-toolkit`.
+
+To view container logs or stop:
+```bash
+docker compose logs -f
+docker compose down
+```
+
+---
 
 Captioner includes a full-featured web interface:
 
@@ -86,6 +115,49 @@ For CPU inference:
 
 ```bash
 captioner path/to/audio.wav --device cpu --compute_type int8
+```
+
+---
+
+## Universal Media Clipper
+
+Captioner includes a robust, zero-flaw media clipping engine supporting all audio and video formats (MP4, MKV, WebM, AVI, MOV, MP3, WAV, FLAC, M4A, etc.).
+
+### Command Line (`captioner-clip`)
+
+```bash
+# Frame-accurate clip with exact re-encoding
+captioner-clip input.mp4 -s 00:01:15 -e 00:02:30 -o clip.mp4
+
+# Instantaneous stream copy without re-encoding
+captioner-clip input.mp4 -s 10.5 -d 30 -m fast -o clip.mp4
+
+# Burn subtitles directly into the clipped video
+captioner-clip input.mp4 -s 00:00:30 -e 00:01:00 --burn-subtitles --subtitles subs.srt -o clip.mp4
+
+# Convert format (e.g. extract audio clip as MP3)
+captioner-clip video.mp4 -s 00:05:00 -e 00:06:00 -f mp3 -o snippet.mp3
+
+# Probe media information
+captioner-clip input.mp4 --probe
+```
+
+### Python API
+
+```python
+import captioner
+
+# Clip media with frame accuracy
+output_file, metadata = captioner.clip_media(
+    input_path="interview.mp4",
+    start_time="00:01:20.500",
+    end_time="00:02:45.000",
+    burn_subtitles=True,
+    subtitles_data=result,  # automatically slices transcript & burns onto video
+    target_format="mp4",
+    mode="exact",
+)
+print(f"Clipped duration: {metadata['duration']}s saved to {output_file}")
 ```
 
 ---

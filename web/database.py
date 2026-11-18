@@ -8,10 +8,12 @@ DB_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(DB_DIR, "data")
 UPLOADS_DIR = os.path.join(DATA_DIR, "uploads")
 EXPORTS_DIR = os.path.join(DATA_DIR, "exports")
+CLIPS_DIR = os.path.join(DATA_DIR, "clips")
 
 os.makedirs(DATA_DIR, exist_ok=True)
 os.makedirs(UPLOADS_DIR, exist_ok=True)
 os.makedirs(EXPORTS_DIR, exist_ok=True)
+os.makedirs(CLIPS_DIR, exist_ok=True)
 
 DATABASE_URL = f"sqlite:///{os.path.join(DATA_DIR, 'captioner_studio.db')}"
 
@@ -77,6 +79,30 @@ class TranscriptionJob(Base):
     completed_at = Column(DateTime, nullable=True)
 
     owner = relationship("User", back_populates="jobs")
+    clips = relationship("MediaClip", back_populates="job", cascade="all, delete-orphan")
+
+
+class MediaClip(Base):
+    __tablename__ = "media_clips"
+
+    id = Column(String(36), primary_key=True, index=True)
+    job_id = Column(String(36), ForeignKey("transcription_jobs.id"), nullable=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    title = Column(String(255), nullable=False)
+    filename = Column(String(255), nullable=False)
+    file_path = Column(String(512), nullable=False)
+    file_size = Column(Integer, default=0)
+    start_time = Column(Float, nullable=False)
+    end_time = Column(Float, nullable=False)
+    duration = Column(Float, nullable=False)
+    format = Column(String(20), nullable=False)
+    mode = Column(String(20), default="exact")
+    burned_subtitles = Column(Boolean, default=False)
+    sliced_transcript = Column(JSON, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    job = relationship("TranscriptionJob", back_populates="clips")
+    owner = relationship("User")
 
 
 def get_db():

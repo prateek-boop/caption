@@ -40,6 +40,11 @@ def transcribe_task(args: dict, parser: argparse.ArgumentParser):
     # model_flush: bool = args.pop("model_flush")
     os.makedirs(output_dir, exist_ok=True)
 
+    clip_start: Optional[str] = args.pop("clip_start", None)
+    clip_end: Optional[str] = args.pop("clip_end", None)
+    clip_burn_subtitles: bool = args.pop("clip_burn_subtitles", False)
+    clip_format: Optional[str] = args.pop("clip_format", None)
+
     align_model: str = args.pop("align_model")
     interpolate_method: str = args.pop("interpolate_method")
     no_align: bool = args.pop("no_align")
@@ -238,3 +243,24 @@ def transcribe_task(args: dict, parser: argparse.ArgumentParser):
     for result, audio_path in results:
         result["language"] = align_language
         writer(result, audio_path, writer_args)
+
+        # >> Optional Media Clip Generation
+        if clip_start is not None:
+            try:
+                from captioner.clipper import clip_media
+                base_name = os.path.splitext(os.path.basename(audio_path))[0]
+                ext = clip_format or os.path.splitext(audio_path)[1].lstrip(".") or "mp4"
+                clip_out = os.path.join(output_dir, f"{base_name}_clip.{ext}")
+                logger.info(f"Generating clip from {clip_start} to {clip_end or 'end'} -> {clip_out}")
+                clip_media(
+                    input_path=audio_path,
+                    output_path=clip_out,
+                    start_time=clip_start,
+                    end_time=clip_end,
+                    burn_subtitles=clip_burn_subtitles,
+                    subtitles_data=result,
+                    target_format=clip_format,
+                )
+                logger.info(f"Clip saved successfully: {clip_out}")
+            except Exception as e:
+                logger.error(f"Failed to generate clip for {audio_path}: {e}")

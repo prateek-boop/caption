@@ -147,6 +147,55 @@ def test_full_studio_workflow():
     assert "Captioner Studio" in res.text
     print("Static Single Page App served successfully!")
 
+    print("\n--- 11. Testing Clipping Engine & API ---")
+    clip_req = {
+        "start_time": 0.2,
+        "end_time": 0.8,
+        "title": "Backend Test Clip",
+        "mode": "exact",
+        "target_format": "wav"
+    }
+    clip_res = client.post(f"/api/jobs/{job_id}/clip", headers=headers, json=clip_req)
+    assert clip_res.status_code == 200, f"Clip creation failed: {clip_res.text}"
+    clip_data = clip_res.json()
+    assert clip_data["title"] == "Backend Test Clip"
+    assert clip_data["duration"] > 0
+    clip_id = clip_data["clip_id"]
+    print(f"Created clip {clip_id} ({clip_data['duration']}s)")
+
+    # Test listing clips for job
+    clips_list_res = client.get(f"/api/jobs/{job_id}/clips", headers=headers)
+    assert clips_list_res.status_code == 200
+    assert len(clips_list_res.json()) >= 1
+    print(f"Listed {len(clips_list_res.json())} clips for job.")
+
+    # Test streaming clip
+    stream_res = client.get(clip_data["stream_url"], headers=headers)
+    assert stream_res.status_code in (200, 206)
+    print("Clip streaming endpoint verified.")
+
+    # Test clip sliced subtitles
+    srt_res = client.get(f"/api/clips/{clip_id}/subtitles/srt", headers=headers)
+    assert srt_res.status_code == 200
+    assert "-->" in srt_res.text
+    print("Clip sliced SRT export verified.")
+
+    # Test standalone clipping endpoint
+    dummy_wav_buf = create_dummy_wav(duration_secs=2.0)
+    standalone_res = client.post(
+        "/api/media/clip",
+        headers=headers,
+        files={"file": ("standalone.wav", dummy_wav_buf.getvalue(), "audio/wav")},
+        data={"start_time": "0.3", "end_time": "1.2", "mode": "exact", "target_format": "wav"}
+    )
+    assert standalone_res.status_code == 200, f"Standalone clip failed: {standalone_res.text}"
+    print(f"Standalone media clip created successfully: {standalone_res.json()['clip_id']}")
+
+    # Clean up created clip
+    del_res = client.delete(f"/api/clips/{clip_id}", headers=headers)
+    assert del_res.status_code == 200
+    print("Clip deleted successfully.")
+
     print("\n>>> ALL TESTS PASSED SUCCESSFULLY! <<<")
 
 if __name__ == "__main__":
